@@ -4,3 +4,5 @@
 - is this proven
 - is it causal
 
+- are zero case locations irrelavent or relevant
+
