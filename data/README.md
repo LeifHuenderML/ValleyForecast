@@ -4,14 +4,16 @@ This document serves as a centralized location for tracking updates and changes 
 
 # Edited Datasets
 
+## [valley_fever_rates/valley_fever_cases_05_31_24.csv](valley_fever_rates/valley_fever_cases_05_31_24.csv)
+
+  used [valley_fever_rates/valley_fever_cases_05_30_24.csv](valley_fever_rates/valley_fever_cases_05_30_24.csv) but removed los angeles county because i missed that in my dataset purchase and it is not worth trying to include.
+
 ## [valley_fever_rates/valley_fever_cases_05_30_24.csv](valley_fever_rates/valley_fever_cases_05_30_24.csv) 
     removed these counties because they were zero values or not applicable
 
   'ALAMEDA COUNTY TOTAL', 'CALIFORNIA TOTAL', 'LOS ANGELES COUNTY TOTAL' "ALPINE", "DEL NORTE", "GLENN", "INYO", "LAKE", "MARIPOSA", "MODOC", "MONO", "PLUMAS", "SHASTA", "SIERRA", "TRINITY", 
 
     removed the rates dimension narrowing it down to jhust the number of cases 
-
-
 
 ## valley_fever_rates
 
@@ -28,8 +30,6 @@ data/valley_fever_rates/valley_fever_rates_05_30_24.csv
         #changed the labels into more consice labels
         #change the dtype of year and cases to ints
         #change the dtype of rate to floats
-
-
 
 # Original Datasets
 

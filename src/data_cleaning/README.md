@@ -7,5 +7,7 @@
 ## [valley_fever_cleaning_v2.ipynb](valley_fever_cleaning_v2.ipynb)
 
 -  a deeper trim of the dataset removing zero values and the rates feature
+- also removed los angeles county because i missed it in the dataset purchase and it is not worth trying to include it 
+
 
 ## 
