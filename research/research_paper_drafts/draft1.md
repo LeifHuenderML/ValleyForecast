@@ -23,3 +23,13 @@ All studies were conducted using the same machine with a AMD 5950x 16 core 32 th
 
 ### Notes from reading papers that might be usefull to add as context of the paper
 
+# math for dataset creation
+The weather dataset has a totatl of:
+    - 9750922 instances
+    - 48 counties
+    - 23 years 
+    - 365 days in a year
+    - 24 hours in a day
+
+so to verify that the number of instances is correct 
+we can do 48 * 23 * 365 * 24 = 9671040
