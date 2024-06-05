@@ -1,3 +1,5 @@
+<img src="docs/images/logo.webp" alt="interpolate logo" width="200">
+
 # ValleyForecast
 
 ## Introduction
