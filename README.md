@@ -31,7 +31,7 @@ For access to the datasets involved in this project, please reach out directly t
 The MIT License (MIT)
 =====================
 
-Copyright © `<2024>` 
+Copyright © `2024` 
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
