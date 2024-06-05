@@ -1,4 +1,4 @@
-<img src="docs/images/logo.webp" alt="interpolate logo" width="200">
+<img src="docs/images/logo.webp" alt="interpolate logo" width="250">
 
 # ValleyForecast
 
