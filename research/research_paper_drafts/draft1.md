@@ -3,6 +3,9 @@ Forecasting Valley Fever Incidence via Enhanced xLSTM Models Trained on Comprehe
 
 # Abstract 
 
+#####insert this somewhere in the abstract
+We propose a simple question: How accurate can training predictive models become to correctly identify the weather pattersn that correlate to valley fever incidence?
+
 # Keywords
 
 # Introduction
@@ -31,7 +34,21 @@ All studies were conducted using the same machine with a AMD 5950x 16 core 32 th
 The data sourced to curate our datasets originates from 2 locations. For all of the data on the number or cases each county experienced was sourced from the California Department of Public Health (CDPH). This dataset included data from 64 locations spanning from 2001 to 2022. It features the counties name year nummber of cases and the rate. For our weather data we selected the 48 counties from the CDPH dataset that contained the most relevant number of cases per year. We then sourced a comprehensive dataset of hourly updated weather features spanning the entirety of the timeline of the other dataset. To do this we used the open weather api historical data call (https://openweathermap.org/api).
 
 ## Data Preperation
-Several key descisions were made when it came to deciding on how to prepare the data. For the CDPH dataset we decided to not include the rate as an outcome variable due to it being flagged by the CDPH for being potentially unreliable. We also narrowed down our selection from the 64 locations to 48 due to certain locations not meeting a 60% threshold for containing data. With the weather dataset the original timespan was from 1979 to 2024 we filterred it out to only keep the years from 2000 to 2022, our descision for going from 2000 is because for the 2001 rates from the CDPH we wanted to train the models to learn the weather paterns from the previous years rates leading up to the current years prediciton. We decided to filter the year spanning from September 1 to August 31 encomassing 365 day of weather data for the model to learn. Our descision for this cutoff period was to allow the model to be able to forecast early predictions before fall when the rates are the highest for CM. With the weather dataset we also chose to one hot encode 2 features that were werather descriptors, such as cloudy or sunny. Before shaping the final dataset we applied MinMax normalization to all of the weather data to decrease the large variances between different features. Resahping the daatacet to get it formated so that it would have the suitabale time sequences for the lstm models we arrived with a input shape of (1056, 8760, 69) where the 1056 is the number of seqences, 8760 is the size of each sequence 365 days * 24 hours per day, and 69 as the number of features per sequence. The output shape is (1056) for the 1056 possible outcomes. Finally we created an additional dataset from this dataset but with augmented data added causing the data set to grow by 4x. Our method for augmenting the data was to apply a noise of 0.01 and 0.001 to the inpud data and pairing it up with the same outcomes. This resulted in an input of (4224, 8760, 69) and a output of (4224).
+Several key descisions were made when it came to deciding on how to prepare the data. For the CDPH dataset we decided to not include the rate as an outcome variable due to it being flagged by the CDPH for being potentially unreliable. We also narrowed down our selection from the 64 locations to 48 due to certain locations not meeting a 60% threshold for containing data. With the weather dataset the original timespan was from 1979 to 2024 we filterred it out to only keep the years from 2000 to 2022, our descision for going from 2000 is because for the 2001 rates from the CDPH we wanted to train the models to learn the weather paterns from the previous years rates leading up to the current years prediciton. We decided to filter the year spanning from September 1 to August 31 encomassing 365 day of weather data for the model to learn. Our descision for this cutoff period was to allow the model to be able to forecast early predictions before fall when the rates are the highest for CM. With the weather dataset we also chose to one hot encode 2 features that were werather descriptors, such as cloudy or sunny. Before shaping the final dataset we applied MinMax normalization to all of the weather data to decrease the large variances between different features. Resahping the daatacet to get it formated so that it would have the suitabale time sequences for the lstm models we arrived with a input shape of (1056, 8760, 69) where the 1056 is the number of seqences, 8760 is the size of each sequence 365 days * 24 hours per day, and 69 as the number of features per sequence. The output shape is (1056) for the 1056 possible outcomes. Finally we created an additional dataset from this dataset but with augmented data added causing the data set to grow by 4x. Our method for augmenting the data was to apply a noise of 0.01 and 0.001 to the inpud data and pairing it up with the same outcomes. This resulted in an input of (4224, 8760, 69) and a output of (4224). 
+
+## Data Splitting
+
+## Models
+
+### Baseline Regressor
+
+Dataset 1 RMSE: 477.99225 Time: 0.00042
+Dataset 2 RMSE: 299.98972 Time: 0.00053
+
+### LSTM
+
+### xLSTM
+
 
 
 
@@ -59,13 +76,3 @@ Several key descisions were made when it came to deciding on how to prepare the 
 
 ### Notes from reading papers that might be usefull to add as context of the paper
 
-# math for dataset creation
-The weather dataset has a totatl of:
-    - 9750922 instances
-    - 48 counties
-    - 23 years 
-    - 365 days in a year
-    - 24 hours in a day
-
-so to verify that the number of instances is correct 
-we can do 48 * 23 * 365 * 24 = 9671040
