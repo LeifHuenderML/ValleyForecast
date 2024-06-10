@@ -3,7 +3,7 @@
 # ValleyForecast
 
 ## Introduction
-Welcome to the official repository for the ValleyForecast project, a  research initiative worked on by Leif Huender, a research fellow at the University of Idaho, in collaboration with Dr. Mary Everett. This repository contains the source code, documentation, and related resources developed during our summer research project focused on predictive modeling for Valley fever outcomes based on meteorological data.
+Welcome to the official repository for the ValleyForecast project, a  research initiative worked on by Leif Huender, a research fellow at the University of Idaho, in collaboration with Dr. Mary Everett a postdoc at the University of Idaho. This repository contains the source code, documentation, and related resources developed during our summer research project focused on predictive modeling for Valley fever outcomes based on meteorological data.
 
 ## Project Overview
 **Valley fever**, scientifically known as **coccidioidomycosis**, is a fungal infection caused by *Coccidioides* spp., primarily affecting lung health. This research project aimed to develop an advanced predictive model utilizing Enhanced Long Short-Term Memory (xLSTM) networks to forecast the incidence of Valley fever based on yearly weather cycles. By integrating comprehensive meteorological data, our model seeks to provide early insights that could be crucial for healthcare preparedness and response strategies.
@@ -25,6 +25,8 @@ For access to the datasets involved in this project, please reach out directly t
 - [Forecasting Valley Fever Incidence via Enhanced xLSTM Models Trained on Comprehensive Meteorological Data.docx](<research/Forecasting Valley Fever Incidence via Enhanced xLSTM Models Trained on Comprehensive Meteorological Data.docx>)
 - For a comprehensive understanding of the models and methodologies employed in this project, refer to the documentation and papers stored in the `/docs` and `/research` folders.
 
+## Adknowledgements
+This publication was made possible by an Institutional Development Award (IDeA) from the National Institute of General Medical Sciences of the National Institutes of Health under Grant #P20GM103408.
 
 ## License
 
