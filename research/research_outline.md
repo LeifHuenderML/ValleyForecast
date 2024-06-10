@@ -30,3 +30,12 @@
 - get back from kansas on the 24 
 - july 23 poster practice session 
 - july 29 - 31 inbre conference in moscow
+
+
+## moving forward 
+- try to find more explainability between different weather patterns and cm
+- there is a kaiser dataset on this
+- try to group it down by climate areas to find what climate areas matter
+- there is a dataest on Readil available published dataset from marissa childs
+- if i could find when and where to sample that would be valuable
+- if i could find correlation to air particulate matter that would be good

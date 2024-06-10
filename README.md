@@ -10,13 +10,12 @@ Welcome to the official repository for the ValleyForecast project, a  research i
 
 ## Repository Structure
 - **/src**: Contains all source codes developed for the project.
-- **/data**: This directory holds datasets used and generated during the project. (Note: Due to privacy and data protection laws, access to raw data may require additional permissions.)
 - **/docs**: Documentation related to the project, including research papers, findings, and a detailed explanation of methodologies.
 - **/research**: Includes additional resources like extended abstracts, presentations, and related literature.
 - **/graphs**: Includes all the graphs that were generated during the project
 
 ## Key Results
-The model developed through this project has demonstrated strong capabilities in predicting the likely incidence of Valley fever with significant accuracy, which could potentially assist in mitigating the impact through better preparedness and timely interventions.
+Research is still in early stages but is yielding promisin results.
 
 ## Accessing the Data
 For access to the datasets involved in this project, please reach out directly to Leif Huender for further instructions on how to obtain.
