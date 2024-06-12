@@ -4,7 +4,7 @@
  * @brief this script covers a large sweep of potential parameters for training the lstm.
  Its intended purpose it to narrow donw the set of optimal hyperparameters to fuurther be
  narrowed down by fine_search.py
- it explores a search space of 
+ it explores a search space of 288 hyperparameters that can be foun in the param dict
  * @version 0.1
  * @date 2024-06-12
  * 
@@ -46,8 +46,8 @@ def main():
     grid_search = lstm.GridSearch(train_loader, val_loader)
 
     param_dict = {
-        'hidden_size' : [4096, 2048, 64, 128, 256, 512, 1024],
-        'num_layers' : [7, 6, 2, 3, 4, 5],
+        'hidden_size' : [64, 128, 256, 512, 1024],
+        'num_layers' : [2, 3, 4, 5],
         'bias' : [True, False],
         'batch_first' : [True],
         'dropout' : [0, 0.1, 0.2, 0.3],
@@ -55,7 +55,10 @@ def main():
         'proj_size' : [0]
     }
 
-    grid_search.search(param_dict)
+    min_train_loss, min_val_loss, best_param_combo = grid_search.search(param_dict)
 
+    file = open('broad_search.txt', 'w')
+    file.write('Min Train RMSE: ' + str(min_train_loss) + '\nMin Validation RMSE: ' + str(min_val_loss) + '\n' + str(best_param_combo))
+    file.close()
 if __name__ == '__main__':
     main()
