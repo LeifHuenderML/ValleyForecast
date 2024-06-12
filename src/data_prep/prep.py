@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
@@ -73,18 +74,9 @@ weather = df.copy()
 merged_df = pd.merge(weather, cases, on=['county','year'],how='inner')
 print(f'Merged DF shape: {merged_df.shape}')
 
-#cutoff date fo the data so that it can early forecast the cases is august 31
-day_threshold = 31
-month_threshold = 8
-
-# Create a boolean mask
-mask = (merged_df['date'].dt.day <= day_threshold) & (merged_df['date'].dt.month <= month_threshold)
-
-# Filter the DataFrame
-filtered_merged_df = merged_df.loc[mask]
 
 
-df = filtered_merged_df.copy()
+df = merged_df.copy()
 
 
 #use min max normalization on all the data
@@ -121,12 +113,14 @@ y_list = []
 
 for _, group_df in grouped:
     x = group_df.drop(['county', 'year', 'cases', 'month', 'date', 'day'], axis=1)
-    x = x.iloc[:243]
+    x = x.iloc[:365]
+
     x = x.values 
     x_list.append(x)
 
     y = group_df['cases'].values[-1] 
     y_list.append(y)
+
 
 x = np.stack(x_list) 
 y = np.array(y_list)
@@ -136,20 +130,8 @@ y_tensor = torch.from_numpy(y).float()
 
 print(f'X tensor shape: {x_tensor.shape}, Y tensor shape: {y_tensor.shape}')
 
-## add augmented noise to 4x the size of the dataset 
-aug = []
-for i in range(4):
-    noise = torch.randn_like(x_tensor) * 0.001
-    aug.append(x_tensor + noise)
 
-aug.append(x_tensor)
-augmented_x = torch.cat(aug, dim=0)
-
-augmented_y = y_tensor.repeat(5)
-
-print(augmented_x.shape)  
-print(augmented_y.shape)  
-dataset = TensorDataset(augmented_x, augmented_y)
+dataset = TensorDataset(x_tensor, y_tensor)
 
 total_size = len(dataset)
 train_size = int(total_size * 0.8)
@@ -159,9 +141,67 @@ test_size = total_size - train_size - val_size
 #split the datasets into 80 15 and 5% for train val and test
 train, val, test = random_split(dataset, [train_size, val_size, test_size])
 
+## add augmented noise to increase and add robustness to the training set
+train_indices = train.indices
+train_x = x_tensor[train_indices]
+train_y = y_tensor[train_indices]
+
+num_augmentations = 100
+
+noise_lvls = np.logspace(np.log10(0.01), np.log10(0.00001), num=num_augmentations)
+print(f'Noise Levels: {noise_lvls}')
+noise = [torch.randn_like(train_x) * noise_lvl for noise_lvl in noise_lvls]
+augmented_x = torch.cat([train_x] + [train_x + noise[i] for i in range(num_augmentations)])
+augmented_y = train_y.repeat(num_augmentations + 1)
+
+val_indices = val.indices
+val_x, val_y = x_tensor[val_indices], y_tensor[val_indices]
+test_indices = test.indices
+test_x, test_y = x_tensor[test_indices], y_tensor[test_indices]
+
+print(f'Train Shapes: {augmented_x.shape, augmented_y.shape}, Validation Shapes: {val_x.shape, val_y.shape}, Test Shapes: {test_x.shape, test_y.shape}')
+
+train = TensorDataset(augmented_x, augmented_y)
+val = TensorDataset(val_x, val_y)
+test = TensorDataset(test_x, test_y)
+
+
 print(f'Train Size: {len(train)}, Val Size: {len(val)}, Test Size: {len(test)}')
 torch.save(train, '../../data/cleaned/train.pt')
 torch.save(val, '../../data/cleaned/val.pt')
 torch.save(test, '../../data/cleaned/test.pt')
 
 print('Train, val, and test datasets saved')
+
+# create a df of the yearly averages without any added augmentation for graph visualizations
+avg_x = x_tensor.mean(dim=1)
+avg_y = y_tensor.unsqueeze(1)
+combined_tensor = torch.cat((avg_x, avg_y), dim=1)
+np_tensor = combined_tensor.numpy()
+cols = [
+    'temp',  
+    'visibility', 
+    'dew_point', 
+    'feels_like',
+    'temp_min', 
+    'temp_max', 
+    'pressure', 
+    'humidity', 
+    'wind_speed',
+    'wind_deg', 
+    'wind_gust', 
+    'rain_1h', 
+    'rain_3h', 
+    'snow_1h', 
+    'snow_3h',
+    'clouds_all', 
+    'weather_id', 
+    'weather_main', 
+    'weather_description',
+    'cases'
+    ]
+
+avg_df = pd.DataFrame(np_tensor, columns=cols)
+print('avg df shape',avg_df.shape)
+avg_df.to_csv('../../data/cleaned/yearly_averages_df.csv', index=False)
+

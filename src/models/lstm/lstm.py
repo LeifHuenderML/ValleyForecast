@@ -5,6 +5,7 @@ import pandas as pd
 import torch.nn as nn
 from pathlib import Path
 import plotly.express as px
+from itertools import product
 
 
 current_script_path = Path(__file__).resolve()
@@ -99,6 +100,7 @@ class Trainer():
                 print(f'Epoch: {epoch}/{epochs}\n---------')
                 print(f'Train Loss RMSE: {train_loss}, Validation Loss RMSE: {val_loss}')
                 print()
+        return self.model, self.train_losses, self.val_losses
         
 
     def predict(self, test_loader):
@@ -134,3 +136,30 @@ class Trainer():
         }
         df = pd.DataFrame(data)
         return df
+    
+
+class GridSearch():
+    def __init__(self, train_loader, val_loader, loss_fn, optimizer):
+        self.train_loader = train_loader
+        self.val_loader =val_loader
+        self.loss_fn =loss_fn
+        self.optimizer = optimizer
+        self.train_loss_df = pd.DataFrame()
+        self.val_loss_df = pd.DataFrame()
+
+
+    def search(self, param_dict):
+        keys = param_dict.keys()
+        values = param_dict.values()
+    
+        for combo in product(*values):
+            param_combo = dict(zip(keys, combo))
+            train_losses, val_losses = self.evaluate_model(**param_combo)
+            self.train_loss_df.concat([self.train_loss_df, train_losses])
+            self.val_loss_df.cat([self.val_loss_df, val_losses])
+
+    def evaluate_model(self, hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size):
+        model = LSTM(hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size)
+        trainer = Trainer(model, self.train_loader, self.val_loader, self.loss_fn, self.optimizer)
+        _, train_losses, val_losses = trainer.train()
+        return train_losses, val_losses
