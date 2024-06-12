@@ -162,7 +162,7 @@ class Trainer():
         df = pd.DataFrame(data)
         return df
     
-    def early_stopping(self, patience=3, delta=1):
+    def early_stopping(self, patience=5, delta=1):
         if len(self.val_losses) >= 2:
             if (self.val_losses[-1] + delta) >  self.val_losses[-2]:
                 self.patience_counter += 1
@@ -184,11 +184,19 @@ class GridSearch():
         keys = param_dict.keys()
         values = param_dict.values()
         print(f'Search Space: {len(list(product(*values)))}')
+        current_min = float('inf')
+        best_param_combo = ''
+        # creates the cartesian product of all the combinations for searching over then loopss through them
         for combo in product(*values):
             param_combo = dict(zip(keys, combo))
             train_losses, val_losses = self.evaluate_model(**param_combo)
             self.train_loss_df = pd.concat([self.train_loss_df, pd.Series(train_losses)])
             self.val_loss_df = pd.concat([self.val_loss_df, pd.Series(val_losses)])
+            if min(train_losses) < current_min: 
+                curent_min = min(train_losses)
+                best_param_combo = param_combo
+        
+        return current_min, best_param_combo
 
     def evaluate_model(self, hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size):
         print( hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size)
@@ -198,34 +206,6 @@ class GridSearch():
         optimizer = optim.Adam(model.parameters(), lr=learning_rate,)
 
         trainer = Trainer(model, self.train_loader, self.val_loader, loss_fn, optimizer=optimizer)
-        _, train_losses, val_losses = trainer.train(epochs=100)
+        _, train_losses, val_losses = trainer.train(epochs=1000)
         return train_losses, val_losses
     
-
-def main():
-    #load all the datasets
-    train = torch.load('../../../data/cleaned/train.pt')
-    val = torch.load('../../../data/cleaned/val.pt')
-    test = torch.load('../../../data/cleaned/test.pt')
-
-    #make them into dataloaders
-    batch_size = 16
-    train_loader = DataLoader(train, batch_size, shuffle=True, drop_last=True)
-    val_loader = DataLoader(val, batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(test, batch_size, shuffle=True, drop_last=True)
-    grid_search = GridSearch(train_loader, val_loader)
-
-    param_dict = {
-        'hidden_size' : [64, 128, 256, 512, 1024],
-        'num_layers' : [2, 3, 4, 5],
-        'bias' : [True, False],
-        'batch_first' : [True],
-        'dropout' : [0, 0.1, 0.2, 0.3],
-        'bidirectional' : [False],
-        'proj_size' : [0]
-    }
-
-    grid_search.search(param_dict)
-
-if __name__ == '__main__':
-    main()
