@@ -146,7 +146,7 @@ train_indices = train.indices
 train_x = x_tensor[train_indices]
 train_y = y_tensor[train_indices]
 
-num_augmentations = 100
+num_augmentations = 20
 
 noise_lvls = np.logspace(np.log10(0.01), np.log10(0.00001), num=num_augmentations)
 print(f'Noise Levels: {noise_lvls}')
