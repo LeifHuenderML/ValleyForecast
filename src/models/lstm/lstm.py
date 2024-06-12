@@ -14,8 +14,9 @@ sys.path.insert(0, str(nord_module_path))
 from nord import Nord
 
 
-class LSTM(nn.Module):
+class LSTM(nn.Module):   
     def __init__(self, input_size=19, hidden_size=128, num_layers=1, bias=True, batch_first=True, dropout=0, bidirectional=False, proj_size=0):
+
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -29,7 +30,7 @@ class LSTM(nn.Module):
         self.fc = nn.Linear(hidden_size, 1)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def forward(self, x):
+    def forward(self, x):   
         batch_size = x.shape[0]
         h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_()
         c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_()
@@ -43,7 +44,7 @@ class LSTM(nn.Module):
         return out
     
 class Trainer():
-    def __init__(self, model, train_loader, val_loader, loss_fn, optimizer):
+    def __init__(self, model, train_loader, val_loader, loss_fn, optimizer): 
         self.model = model.to(model.device)
         self.train_loader = train_loader   
         self.val_loader = val_loader
@@ -52,6 +53,7 @@ class Trainer():
         self.device = model.device
         self.train_losses = []
         self.val_losses = []
+        self.patience_counter = 0
 
 
     def train_one_epoch(self,):
@@ -95,7 +97,9 @@ class Trainer():
             #add them to the list that keeps track of losses
             self.train_losses.append(train_loss)
             self.val_losses.append(val_loss)
-
+            #end training early if the model stops improving
+            if self.early_stopping():
+                return self.model, self.train_losses, self.val_losses
             if epoch % 10 == 0:
                 print(f'Epoch: {epoch}/{epochs}\n---------')
                 print(f'Train Loss RMSE: {train_loss}, Validation Loss RMSE: {val_loss}')
@@ -137,6 +141,15 @@ class Trainer():
         df = pd.DataFrame(data)
         return df
     
+    def early_stopping(self, patience=20, delta=1):
+        if len(self.val_losses) >= 2:
+            if (self.val_losses[-1] + delta) >  self.val_losses[-2]:
+                self.patience_counter += 1
+                if self.patience_counter >= patience:
+                    return True
+            else:
+                self.patience_counter = 0
+        return False           
 
 class GridSearch():
     def __init__(self, train_loader, val_loader, loss_fn, optimizer):
@@ -163,3 +176,5 @@ class GridSearch():
         trainer = Trainer(model, self.train_loader, self.val_loader, self.loss_fn, self.optimizer)
         _, train_losses, val_losses = trainer.train()
         return train_losses, val_losses
+    
+
