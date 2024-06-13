@@ -167,9 +167,9 @@ test = TensorDataset(test_x, test_y)
 
 
 print(f'Train Size: {len(train)}, Val Size: {len(val)}, Test Size: {len(test)}')
-torch.save(train, '../../data/cleaned/train.pt')
-torch.save(val, '../../data/cleaned/val.pt')
-torch.save(test, '../../data/cleaned/test.pt')
+# torch.save(train, '../../data/cleaned/train.pt')
+# torch.save(val, '../../data/cleaned/val.pt')
+# torch.save(test, '../../data/cleaned/test.pt')
 
 print('Train, val, and test datasets saved')
 
@@ -203,5 +203,5 @@ cols = [
 
 avg_df = pd.DataFrame(np_tensor, columns=cols)
 print('avg df shape',avg_df.shape)
-avg_df.to_csv('../../data/cleaned/yearly_averages_df.csv', index=False)
+# avg_df.to_csv('../../data/cleaned/yearly_averages_df.csv', index=False)
 

@@ -347,6 +347,9 @@ class GridSearch():
                 current_train_min = min(train_losses)
                 current_val_min = min(val_losses)
                 best_param_combo = param_combo
+                file = open('search.txt', 'w')
+                file.write('Min Train RMSE: ' + str(current_train_min) + '\nMin Validation RMSE: ' + str(current_val_min) + '\n' + str(best_param_combo))
+                file.close()
         
         return current_train_min, current_val_min, best_param_combo
 

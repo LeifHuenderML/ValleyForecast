@@ -55,10 +55,7 @@ def main():
         'proj_size' : [0]
     }
 
-    min_train_loss, min_val_loss, best_param_combo = grid_search.search(param_dict)
+    grid_search.search(param_dict)
 
-    file = open('broad_search.txt', 'w')
-    file.write('Min Train RMSE: ' + str(min_train_loss) + '\nMin Validation RMSE: ' + str(min_val_loss) + '\n' + str(best_param_combo))
-    file.close()
 if __name__ == '__main__':
     main()

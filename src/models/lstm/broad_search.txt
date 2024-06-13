@@ -1,3 +1,3 @@
-Min Train RMSE: 60.16107333506186
-Min Validation RMSE: 65.81557011847221
-{'hidden_size': 64, 'num_layers': 2, 'bias': True, 'batch_first': True, 'dropout': 0, 'bidirectional': False, 'proj_size': 0}
+Min Train RMSE: 11.33083176851998
+Min Validation RMSE: 70.89486087741568
+{'hidden_size': 200, 'num_layers': 2, 'bias': False, 'batch_first': True, 'dropout': 0, 'bidirectional': False, 'proj_size': 0}
