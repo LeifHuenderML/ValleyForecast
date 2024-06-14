@@ -59,8 +59,10 @@ Min Validation RMSE: 57.3488710034565
 keep this one in mind
 200 2 True True 0.1 False 
 
-
-
+Fine Search results
+Min Train RMSE: 11.33083176851998
+Min Validation RMSE: 70.89486087741568
+{'hidden_size': 200, 'num_layers': 2, 'bias': False, 'batch_first': True, 'dropout': 0, 'bidirectional': False, 'proj_size': 0}
 
 
 ### xLSTM

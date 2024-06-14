@@ -27,9 +27,9 @@
 
 import torch
 import torch.nn as nn
+import torch.mm as mm 
 from torch import Tensor
 from torch.nn import Parameter
-
 
 class sLSTMCell(nn.Module):
     def __init__(self, input_size, hidden_size,):
@@ -37,8 +37,46 @@ class sLSTMCell(nn.Module):
         self.size = input_size
         self.hidden_size = hidden_size
 
-    def forward(self, input, hx):
-        return
+        # Each gate consist of 4 Parameters a input weights, hidden weights, and bias input bias and hidden bias
+        # input gate
+        self.w_ii = Parameter(Tensor(input_size, hidden_size))
+        self.w_hi = Parameter(Tensor(input_size, hidden_size))
+        self.b_ii = Parameter(Tensor(hidden_size))
+        self.b_hi = Parameter(Tensor(hidden_size))
+        # forget gate
+        self.w_if = Parameter(Tensor(input_size, hidden_size))
+        self.w_hf = Parameter(Tensor(input_size, hidden_size))
+        self.b_if = Parameter(Tensor(hidden_size))
+        self.b_hf = Parameter(Tensor(hidden_size))
+        # cell gate
+        self.w_ig = Parameter(Tensor(input_size, hidden_size))
+        self.w_hg = Parameter(Tensor(input_size, hidden_size))
+        self.b_ig = Parameter(Tensor(hidden_size))
+        self.b_hf = Parameter(Tensor(hidden_size))
+        # output gate
+        self.w_io = Parameter(Tensor(input_size, hidden_size))
+        self.w_ho = Parameter(Tensor(input_size, hidden_size))
+        self.b_ho = Parameter(Tensor(hidden_size))
+        self.b_ho = Parameter(Tensor(hidden_size))
+
+        self.init_weights()
+
+    def init_weights(self):
+        for p in self.parameters():
+            if p.data.ndimension() >= 2:
+                nn.init.xavier_uniform_(p.data)
+            else:
+                nn.init.zeros_(p.data)
+
+    def forward(self, input, hidden):
+
+        # in this xt == input
+                  # hx == ht-1
+                  # cx == ct-1 
+
+        hx, cx = hidden
+        
+        
 
 
 
