@@ -446,15 +446,38 @@ class sLSTMCell(nn.Module):
         self.hidden_size = hidden_size
         self.bias = bias
 
+        self.w = nn.Linear(input_size, hidden_size * 4, bias=bias)
+        self.r = nn.Linear(hidden_size, hidden_size * 4, bias=bias)
+        self.b = nn.Linear(hidden_size * 4) 
 
+        self.reset_parameters()
 
     def reset_parameters(self):
         std = 1.0 / np.sqrt(self.hidden_size)
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, input, hidden=None):
-        return
+    def forward(self, input, c_t_p, h_t_p, n_t_p, m_t_p):
+        #encode the weights with the input with the hidden with the bias
+        gates = self.w(input) + self.r(h_t_p) + self.b
+        # split into their respective gates
+        cell_input, input_gate, forget_gate, output_gate = gates.chunk(4,1)
+        #apply the activation functions
+        z_t = torch.tanh(cell_input)
+        i_t = torch.exp(input_gate)
+        f_t = torch.exp(forget_gate)
+        o_t = torch.sigmoid(output_gate)
+        #creathe the stabilizer state
+        m_t = torch.max((torch.log(f_t) + m_t_p), torch.log(i_t))
+        #apply the stabilize fate  to the inpud and forget gates
+        stabil_i_t = torch.exp(torch.log(i_t) - m_t)
+        stabil_f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+        #update the states
+        c_t = stabil_f_t * c_t_p + i_t * z_t
+        n_t = stabil_f_t * n_t_p + stabil_i_t
+        h_t = o_t * (c_t / n_t)
+        #pass forward the new states
+        return h_t, c_t, h_t, n_t, m_t
 
     
 class sLSTM(nn.Module):
@@ -490,18 +513,23 @@ class sLSTM(nn.Module):
 
     def forward(self, input, hidden=None):
         batch_size = input.size(0)
-        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
-        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
-
-        hidden = [(h0[i], c0[i]) for i in range(self.num_layers)]
+        #hidden states
+        c = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        h = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        n = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        m = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
         
         outputs = []
         for time_step in range(input.size(1)):  
             x = input[:, time_step, :].cuda()
-            for i, lstm in enumerate([self.l1, self.l2]):
-                x, hidden[i] = lstm(x, hidden[i])
 
-            outputs.append(x.unsqueeze(1))
+            x = input[:, time_step, :].cuda()
+            
+            out, c, h, n, m = self.l1(x, c, h, n, m)
+            out, c, h, n, m = self.l1(out, c, h, n, m)
+            
+            outputs.append(out.unsqueeze(1))
+
 
         out = torch.cat(outputs, dim=1)[:, -1, :]  
 
@@ -514,3 +542,4 @@ class sLSTM(nn.Module):
         out = self.fc3(out)
         out = out.squeeze()  
         return out
+    
