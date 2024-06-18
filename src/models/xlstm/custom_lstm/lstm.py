@@ -267,9 +267,16 @@ class LSTMCellv2(nn.Module):
 
         #computes the combined input to the input projection and the recurrent projection
         gates = self.xh(input) + self.hh(hx)
-
+        
+        print(gates.shape)
         #slits the gates into 4 equal parts along the second dimension (1)
         input_gate, forget_gate, cell_gate, output_gate = gates.chunk(4, 1)
+
+        print(f'input_gate shape: {input_gate.shape}')
+        print(f'forget_gate shape: {forget_gate.shape}')
+        print(f'cell_gate shape: {cell_gate.shape}')
+        print(f'output_gate shape: {output_gate.shape}')
+
 
         #apply the activation functions to the 4 gates
         i_t = torch.sigmoid(input_gate)

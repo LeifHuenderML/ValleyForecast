@@ -115,41 +115,87 @@ class sLSTMCell(nn.Module):
     '''
 
 
-    def __init__(self, input_size, hidden_size, bias=True): 
+    def __init__(self, name, input_size, hidden_size, bias=True): 
         super(sLSTMCell, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-
+        self.name = name
         self.w = nn.Linear(input_size, hidden_size * 4, bias=bias)
         self.r = nn.Linear(hidden_size, hidden_size * 4, bias=bias)
 
         self.reset_parameters()
+
+        self.display_features()
 
     def reset_parameters(self):
         std = 1.0 / np.sqrt(self.hidden_size)
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
+    def display_features(self,):
+        print('='*100)
+        print(f'{self.name} input and output features')
+        print(f'Number of input features for w: {self.w.in_features}')
+        print(f'Number of output features for w: {self.w.out_features}')
+        print()
+        print(f'Number of input features for r: {self.r.in_features}')
+        print(f'Number of output features for r: {self.r.out_features}')
+        print()
+
+
     def forward(self, input, c_t_p, h_t_p, n_t_p, m_t_p):
         #encode the weights with the input with the hidden with the bias
         gates = self.w(input) + self.r(h_t_p)
+        print(f'gates shape {gates.shape}')
         # split into their respective gates
         cell_input, input_gate, forget_gate, output_gate = gates.chunk(4,1)
+
+
         #apply the activation functions
         z_t = torch.tanh(cell_input)
         i_t = torch.exp(input_gate)
         f_t = torch.exp(forget_gate)
         o_t = torch.sigmoid(output_gate)
+        
+        print(f'cell_input shape: {cell_input.shape}')
+        print(f'input_gate shape: {input_gate.shape}')
+        print(f'forget_gate shape: {forget_gate.shape}')
+        print(f'output_gate shape: {output_gate.shape}')
+        print()
+        print(f'z_t shape: {z_t.shape}')
+        print(f'i_t shape: {i_t.shape}')
+        print(f'f_t shape: {f_t.shape}')
+        print(f'o_t shape: {o_t.shape}')
+        print()
+        print(f'input shape: {input.shape}')
+        print(f'c_t_p shape: {c_t_p.shape}')
+        print(f'h_t_p shape: {h_t_p.shape}')
+        print(f'n_t_p shape: {n_t_p.shape}')
+        print(f'm_t_p shape: {m_t_p.shape}')
+
+
         #creathe the stabilizer state
         m_t = torch.max((torch.log(f_t) + m_t_p), torch.log(i_t))
+        print()
+        print(f'm_t shape: {m_t.shape}')
+
         #apply the stabilize fate  to the inpud and forget gates
         stabil_i_t = torch.exp(torch.log(i_t) - m_t)
         stabil_f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+        print()
+        print(f'stabil_i_t shape {stabil_i_t.shape}')
+        print(f'stabil_f_t shape {stabil_i_t.shape}')
+        print()
         #update the states
         c_t = stabil_f_t * c_t_p + i_t * z_t
         n_t = stabil_f_t * n_t_p + stabil_i_t
         h_t = o_t * (c_t / n_t)
+
+        print(f'c_t shape: {c_t.shape}')
+        print(f'n_t shape: {n_t.shape}')
+        print(f'h_t shape: {h_t.shape}')
+        print()
         #pass forward the new states
         return h_t, c_t, h_t, n_t, m_t
 
@@ -177,8 +223,8 @@ class sLSTM(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.relu = nn.ReLU()
 
-        self.l1 = sLSTMCell(input_size, hidden_size, bias)
-        self.l2 = sLSTMCell(hidden_size, hidden_size, bias)
+        self.l1 = sLSTMCell('Cell 1', input_size, hidden_size, bias)
+        self.l2 = sLSTMCell('Cell 2', hidden_size, hidden_size, bias)
 
         # Create the Linear layers
         self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
@@ -197,16 +243,15 @@ class sLSTM(nn.Module):
         for time_step in range(input.size(1)):  
             x = input[:, time_step, :].cuda()
 
-            x = input[:, time_step, :].cuda()
-            
-            out, c, h, n, m = self.l1(x, c, h, n, m)
-            out, c, h, n, m = self.l1(out, c, h, n, m)
+            #possible bugs with hor the hidden states are being handled
+            out, c[0], h[0], n[0], m[0] = self.l1(x, c[0], h[0], n[0], m[0])
+            out, c[1], h[1], n[1], m[1] = self.l1(out, c[1], h[1], n[1], m[1])
             
             outputs.append(out.unsqueeze(1))
 
 
         out = torch.cat(outputs, dim=1)[:, -1, :]  
-
+        # print(f'out shape {out.shape}')
         out = self.fc1(out)
         out = self.relu(out)
         out = self.dropout(out)
