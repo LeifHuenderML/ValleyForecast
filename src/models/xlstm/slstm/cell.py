@@ -192,12 +192,25 @@ class LSTM(nn.Module):
     
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class LSTMCellv2(nn.Module):
     '''
-    LSTMCellv2 is a custom cell for an lstm created by Leif Huender with inspiration from https://github.com/georgeyiasemis/Recurrent-Neural-Networks-from-scratch-using-PyTorch
+    LSTMCell is a custom cell for an lstm created by Leif Huender with inspiration from https://github.com/georgeyiasemis/Recurrent-Neural-Networks-from-scratch-using-PyTorch
 
     This is the building block fro the lstm class
-    Changes made to this one is removing the laryeas and instead creating a manual stack
 
     Parameters:
     input_size: the number of features that the LSTMCell should expect
@@ -267,7 +280,7 @@ class LSTMCellv2(nn.Module):
         #compute the new hidden state
         hy = o_t * torch.tanh(cy)
 
-        return (hy, cy)
+        return hy, (hy, cy)
 
     
 class LSTMv2(nn.Module):
@@ -290,50 +303,214 @@ class LSTMv2(nn.Module):
         self.bias = bias
         self.output_size = output_size
         
-        #lstm layers
+        self.dropout = nn.Dropout(0.1)
+        self.relu = nn.ReLU()
+
         self.l1 = LSTMCellv2(input_size, hidden_size, bias)
         self.l2 = LSTMCellv2(hidden_size, hidden_size, bias)
 
-        #create the Linear layers
-        self.fc1 = nn.Linear(self.hidden_size, int(self.hidden_size/2))
-        self.fc2 = nn.Linear(int(self.hidden_size/2), int(self.hidden_size/4))
-        self.fc3 = nn.Linear(int(self.hidden_size/4), self.output_size)
+        # Create the Linear layers
+        self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
+        self.fc2 = nn.Linear(hidden_size // 2, hidden_size // 4)
+        self.fc3 = nn.Linear(hidden_size // 4, output_size)
 
-    def forward(self, input, hx=None):
-        '''
-        Parameters: 
-        input: the data 
-        hx: the hidden states
+    def forward(self, input, hidden=None):
+        batch_size = input.size(0)
+        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
 
-        Input of shape (batch_size, seqence length , input_size)
-        Output of shape (batch_size, output_size)
-        '''
-        #initializes the models hidden states if there is none
-        if hx is None:
-            h0 = Variable(torch.zeros(self.num_layers, input.size(0), self.hidden_size).cuda())
-        else:
-             h0 = hx
-        #stores the models outputs value
-        outputs = []
-        #initialize the hiden states for each layer
-        hidden = list()
-        for layer in range(self.num_layers):
-            hidden.append((h0[layer, :, :], h0[layer, :, :]))
-        #iterates over the time steps of the input sequence
-        for time_step in range(input.size(1)):
-            #iterates over the layers of the LSTM
-            for layer in range(self.num_layers):
-                hidden_l = self.l1(input[:, time_step, :],(hidden[layer][0],hidden[layer][1]))
-                hidden_l = self.l2(hidden[layer - 1][0],(hidden[layer][0], hidden[layer][1]))
-
-                hidden[layer] = hidden_l
-  
-            outputs.append(hidden_l[0])
-        #reshape this to make it fit the linear layers
-        out = outputs[-1].squeeze()
-        #run through each of the linear layers
-        out = self.fc1(out)
-        out = self.fc2(out)
-        out = self.fc3(out)
+        hidden = [(h0[i], c0[i]) for i in range(self.num_layers)]
         
+        outputs = []
+        for time_step in range(input.size(1)):  
+            x = input[:, time_step, :].cuda()
+            for i, lstm in enumerate([self.l1, self.l2]):
+                x, hidden[i] = lstm(x, hidden[i])
+
+            outputs.append(x.unsqueeze(1))
+
+        out = torch.cat(outputs, dim=1)[:, -1, :]  
+
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc3(out)
+        out = out.squeeze()  
+        return out
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class sLSTMCell(nn.Module):
+    r'''
+    LSTMCell is a custom cell for an lstm created by Leif Huender with inspiration from https://github.com/georgeyiasemis/Recurrent-Neural-Networks-from-scratch-using-PyTorch
+
+    This is the building block fro the lstm class
+
+    Parameters:
+    input_size: the number of features that the LSTMCell should expect
+    hidden_size: the number of hidden features the LSTMCell should create
+    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
+
+    Variables:
+    States:
+        c_t: cell state
+            The cell state acts as the memory component by storing and maintaining information over long sequences
+        n_t: normalizer state
+            The normalizer state modelates the infuence the forget and input gate over time
+        h_t: hidden state
+            The hidden state acts as the memory component by storing and maintaining information over long sequences
+        m_t: stabilizer state
+            stabilizes the input and forget gates so that there is not an overflow caused from the exponential activation function inside them
+
+        C_t_p: previous cell state
+            Stores the cells state at the previous time step t-1.
+        n_t_p: previous normalizer state
+            Stores the previous normalizer state at time step t-1.
+        h_t_p: previous hidden state
+            Store the previous hidden state at time step t-1.
+        m_t_p: previous stabilizer state
+            Store the previous stabilizer state at time step t-1.
+    Inputs:
+        x_t: input vector
+            Represents the input features at time step t.
+    Gates: 
+        i_t: input gate
+            Controls what new information from the current input and previous hidden cell state will be added to the cell state.
+        f_t: forget gate
+            Determines what information from the previous cell stae should be forgotten or retained fo the current time step.
+        o_t: output gate
+            Determines what parts of the cell state should be used to compute the hidden state.
+        stabil_i_t: stabil. input gate
+            The input gate with the added stabilization.
+        stabil_f_t: stabil forget gate
+            The forget gate withe the added stabilization.
+    Gating Factors: 
+        r_z: gating factor for cell input
+        r_i: gating factor for input gate
+        r_f: gating factor for forget gate
+        r_o: gating factor for output gate
+    Weights:
+        w_i: input gate weights
+        w_f: forget gate weights
+        w_o: output gate weights
+    Biases:
+        b_i: input gate bias
+        b_f: forget gate bias
+        b_o: output gate bias
+    Symbols:
+        \sigma: sigmoid function 
+        \odot: hadamard product
+        ^T: matric transpose
+        \exp: exponent
+        \frac: fraction
+        \sqrt: square root
+        \log: logarithm
+        \tanh: tanh
+        \max: max
+    Forward Pass:
+        \begin{align}
+        c_t &= f_t \odot c_{tp} + i_t \odot z_t \tag{8} \\
+        n_t &= f_t \odot n_{tp} + i_t \tag{9} \\
+        h_t &= o_t \odot \hat{h}_t, \quad \hat{h}_t = \frac{c_t}{n_t} \tag{10} \\
+        \tilde{z}_t &= w_z^T x_t + r_z h_{tp} + b_z \tag{11} \\
+        \tilde{i}_t &= w_i^T x_t + r_i h_{tp} + b_i \tag{12} \\
+        \tilde{f}_t &= w_f^T x_t + r_f h_{tp} + b_f \tag{13} \\
+        \tilde{o}_t &= w_o^T x_t + r_o h_{tp} + b_o \tag{14} \\
+        m_t &= \max(\log(f_t) + m_{tp}, \log(i_t)) \tag{15} \\
+        \tilde{i}'_t &= \exp(\log(i_t) - m_t) \tag{16} \\
+        \tilde{f}'_t &= \exp(\log(f_t) + m_{tp} - m_t) \tag{17}
+        \end{align}
+    '''
+
+
+    def __init__(self, input_size, hidden_size, bias=True): 
+        super(sLSTMCell, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+
+
+
+    def reset_parameters(self):
+        std = 1.0 / np.sqrt(self.hidden_size)
+        for w in self.parameters():
+            w.data.uniform_(-std, std)
+
+    def forward(self, input, hidden=None):
+        return
+
+    
+class sLSTM(nn.Module):
+    '''
+    Uses the LSTMCell class and nn.Linear class to contruct a regressor LSTM
+
+    Parameters:
+    input_size: the number of features that the LSTM should expect
+    hidden_size: the number of hidden features the LSTM should create
+    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
+    num_layers: number of layers the LSTM will have in the stack
+    output_size: number of values to predict, since we are training it as a regressor we will 
+
+    '''
+    def __init__(self, input_size=19, hidden_size=265, num_layers=2, bias=True, output_size=1):
+        super(sLSTM, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bias = bias
+        self.output_size = output_size
+        
+        self.dropout = nn.Dropout(0.1)
+        self.relu = nn.ReLU()
+
+        self.l1 = LSTMCellv2(input_size, hidden_size, bias)
+        self.l2 = LSTMCellv2(hidden_size, hidden_size, bias)
+
+        # Create the Linear layers
+        self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
+        self.fc2 = nn.Linear(hidden_size // 2, hidden_size // 4)
+        self.fc3 = nn.Linear(hidden_size // 4, output_size)
+
+    def forward(self, input, hidden=None):
+        batch_size = input.size(0)
+        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+
+        hidden = [(h0[i], c0[i]) for i in range(self.num_layers)]
+        
+        outputs = []
+        for time_step in range(input.size(1)):  
+            x = input[:, time_step, :].cuda()
+            for i, lstm in enumerate([self.l1, self.l2]):
+                x, hidden[i] = lstm(x, hidden[i])
+
+            outputs.append(x.unsqueeze(1))
+
+        out = torch.cat(outputs, dim=1)[:, -1, :]  
+
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc3(out)
+        out = out.squeeze()  
         return out
