@@ -104,7 +104,6 @@ class sLSTMCell(nn.Module):
         \end{align}
     '''
 
-
     def __init__(self, input_size, hidden_size, bias=True, name='sLSTMCell'): 
         super(sLSTMCell, self).__init__()
         self.input_size = input_size
@@ -158,8 +157,14 @@ class sLSTMCell(nn.Module):
         print(f'Number of input features for r: {self.r.in_features}')
         print(f'Number of output features for r: {self.r.out_features}')
         print()
+''''
 
 
+
+
+
+
+'''
 class GatedMLP(nn.Module):
     def __init__(self, input_size, output_size, projection_factor=4/3):
         super(GatedMLP, self).__init__()
@@ -211,28 +216,14 @@ class sLSTMBlock(nn.Module):
         out = out + x
 
         return out
+''''
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'''
 class sLSTM(nn.Module):
     '''
     Uses the LSTMCell class and nn.Linear class to contruct a regressor LSTM
@@ -294,4 +285,11 @@ class sLSTM(nn.Module):
         out = self.fc3(out)
         out = out.squeeze()  
         return out
-    
+''''
+
+
+
+
+
+
+'''

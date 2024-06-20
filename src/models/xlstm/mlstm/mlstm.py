@@ -102,7 +102,6 @@ class mLSTMcell(nn.Module):
             o_t &= \sigma(\tilde{o}_t) , \quad \tilde{o}_t = W_o x_t + b_o && \text{output gate (27)}
         \end{align}
     '''
-
     def __init__(self, input_size, hidden_size, bias=True, name="mLSTMCell"):
         super(mLSTMcell, self).__init__()
         self.input_size = input_size
@@ -113,7 +112,7 @@ class mLSTMcell(nn.Module):
 
         self.reset_parameters()
         self.display_features()
-        
+
     def forward(self,x_t, C_t_p, n_t_p, m_t_p ):
 
         gates = self.w(x_t)
@@ -144,8 +143,6 @@ class mLSTMcell(nn.Module):
         h_t = o_t * h_t_intermediate
 
         return h_t, C_t, n_t, m_t
-    
-
 
     def reset_parameters(self):
         std = 1.0 / np.sqrt(self.hidden_size)
@@ -158,3 +155,73 @@ class mLSTMcell(nn.Module):
         print(f'Number of input features for w: {self.w.in_features}')
         print(f'Number of output features for w: {self.w.out_features}')
         print()
+''''
+
+
+
+
+
+
+'''
+class mLSTMBlock(nn.Module):
+    def __init__(self, input_size, hidden_size, bias=True, name='mLSTMBlock'):
+        super(mLSTMBlock, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.name = name
+
+        self.layer_norm = nn.LayerNorm()
+        self.conv4 = nn.Conv1d()
+        self.mLSTM = mLSTMcell()
+        self.group_norm = nn.GroupNorm()
+        self.gated_mlp1 = GatedMLP()
+        self.gated_mlp2 = GatedMLP()
+        self.gated_mlp3 = GatedMLP(projection_factor=1/2)
+
+    def forward(self, x):
+        out = self.layer_norm(x)
+        gated_out1 = self.gated_mlp1(out)
+        gated_out2 = self.gated_mlp2(out)
+
+        conv_out = self.conv4(gated_out1)
+        conv_out = nn.SiLU(conv_out)
+
+        q, k = conv_out.chunk(2,1)
+        
+        out, _, _, _ = self.mLSTM(x, ''' fill in the blanks''', q, k, gated_out1)
+        out = self.group_norm(out)
+        out = out + gated_out1
+
+        gated_out2 = nn.SiLU(gated_out2)
+
+        out = out * gated_out2
+
+        out = self.gated_mlp3(out)
+        out = out + x
+        return out
+    
+
+
+
+
+
+
+
+''''
+
+
+
+
+
+
+'''
+class GatedMLP(nn.Module):
+    def __init__(self, input_size, output_size, projection_factor=2):
+        super(GatedMLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, int(output_size * projection_factor))
+        self.gate = nn.Linear(output_size, output_size)
+    
+    def forward(self, x):
+        gate = torch.sigmoid(self.gate(x))
+        return x * gate
