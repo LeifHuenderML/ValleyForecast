@@ -69,6 +69,7 @@ class xLSTM(nn.Module):
 
         return out
     
-
-
-
+class Trainer():
+    def __init__(self):
+        super(Trainer, self).__init__()
+        
