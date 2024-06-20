@@ -58,6 +58,17 @@ class xLSTM(nn.Module):
         out = self.sBlock1(out)
         out = self.mbBlock2(out)
         out = self.sBlock2(out)
-        out = self.fc1()
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc3(out)
+        out = out.squeeze()
+
+        return out
+    
+
 
 
