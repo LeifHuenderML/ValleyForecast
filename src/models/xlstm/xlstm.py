@@ -1,9 +1,9 @@
 """
- * @file test.py
+ * @file xlstm.py
  * @author Leif Huender
  * @brief 
  * @version 0.1
- * @date 2024-06-13
+ * @date 2024-06-20
  * 
  * @copyright Copyright (c) 2024 Leif Huender
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,42 +24,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
 """
+
 import torch
+import time
 import torch.nn as nn
+from mlstm import mlstm
+from slstm import slstm
+
 
 class xLSTM(nn.Module):
-    def __init__(self, input_size=19, hidden_size=256):
+    def __init__(self,input_size, hidden_size, bias=True, name='xLSTM'):
         super(xLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
-        
-        self.m1 = mLstm(input_size, hidden_size)
-        self.m2 = mLstm(hidden_size, hidden_size)
-        
-        self.s1 = sLSTM(hidden_size, hidden_size)
-        self.s2 = sLSTM(hidden_size, hidden_size)
-        
-        self.dropout = nn.Dropout(0.2)
-        
-        self.fc1 = nn.Linear(hidden_size, hidden_size/2)
-        self.fc2 = nn.Linear(hidden_size/2, hidden_size/4)
-        self.fc3 = nn.Linear(hidden_size/4, 1)
+        self.bias = bias
+        self.name = name
 
-    def forward(self, x):
-        h_0 = torch.zeros(x.size(0), self.hidden_size).to(x.device)
-        c_0 = torch.zeros(x.size(0), self.hidden_size).to(x.device)
+        self.mBlock1 = mlstm.mLSTMBlock()
+        self.mbBlock2 = mlstm.mLSTMBlock()
+        
+        self.sBlock1 = slstm.sLSTMBlock()
+        self.sBlock2 = slstm.sLSTMBlock()
 
-        out, (h_n, c_n) = self.m1(x, (h_0, c_0))
-        out = self.dropout(out)
-        out, (h_n, c_n) = self.s1(out, (h_n, c_n))
-        out = self.dropout(out)
-        out, (h_n, c_n) = self.m2(out, (h_n, c_n))
-        out = self.dropout(out)
-        out, (h_n, c_n) = self.s2(out, (h_n, c_n))
-        out = self.fc1(h_n) # pass the hidden state to the firs linear layer
-        out = self.dropout(out)
-        out = self.fc2(out)
-        out = self.dropout(out)
-        out = self.fc3(out)
-        out = out.flatten(start_dim=1)  
-        return out
+        self.fc1 = nn.Linear()
+        self.fc2 = nn.Linear()
+        self.fc3 = nn.Linear()
+
+        self.dropout = nn.Dropout()
+        self.relu = nn.ReLU()
+
+    def forward(self,x):
+        out = self.mBlock1(x)
+        out = self.sBlock1(out)
+        out = self.mbBlock2(out)
+        out = self.sBlock2(out)
+        out = self.fc1()
+
+
