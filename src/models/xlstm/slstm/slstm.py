@@ -158,7 +158,81 @@ class sLSTMCell(nn.Module):
         print(f'Number of input features for r: {self.r.in_features}')
         print(f'Number of output features for r: {self.r.out_features}')
         print()
+
+
+class GatedMLP(nn.Module):
+    def __init__(self, input_size, output_size, projection_factor=4/3):
+        super(GatedMLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, int(output_size * projection_factor))
+        self.gate = nn.Linear(output_size, output_size)
     
+    def forward(self, x):
+        gate = torch.sigmoid(self.gate(x))
+        return x * gate
+
+class sLSTMBlock(nn.Module):
+    def __init__(self,input_size, hidden_size, bias=True, name="sLSTMBlock", in_channels=19, out_channels=64, kernel_size=5, stride=1, padding=1):
+        super(sLSTMBlock, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.name = name
+
+        self.layer_norm = nn.LayerNorm(input_size)
+        self.conv4 = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
+        self.sLSTM_cell = sLSTMCell(input_size, hidden_size, bias, name+' sLSTMCell_1')
+        self.group_norm = nn.GroupNorm(num_groups=1,num_channels=1)
+        self.gate_mlp_1 = GatedMLP(input_size=1, output_size=1)
+        self.gate_mlp_2 = GatedMLP(input_size=1, output_size=1)
+        self.gate_mlp_3 = GatedMLP(input_size=1, output_size=1, projection_factor=3/4)
+
+    def forward(self,x):
+        out = self.layer_norm(x)
+        out1 = out.copy()
+
+        out = self.conv4(out)
+        out = nn.SiLU(out)
+
+        i, f = out.chunk(2,1)
+        z, o = out1.chunk(2,1)
+
+        out, _, _, _, _ = self.sLSTM_cell(x, '''init the other 4''', i, f, z, o)
+
+        out = self.group_norm(out)
+
+        mlp1_out = self.gate_mlp_1(out)
+        mlp2_out = self.gate_mlp_2(out)
+
+        mlp2_out = nn.GELU(mlp2_out)
+
+        out = mlp1_out * mlp2_out
+        out = self.gate_mlp_3(out)
+
+        out = out + x
+
+        return out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class sLSTM(nn.Module):
     '''
     Uses the LSTMCell class and nn.Linear class to contruct a regressor LSTM
