@@ -34,71 +34,61 @@ from torch.autograd import Variable
 
 class sLSTMCell(nn.Module):
     r'''
-    LSTMCell is a custom cell for an lstm created by Leif Huender with inspiration from https://github.com/georgeyiasemis/Recurrent-Neural-Networks-from-scratch-using-PyTorch
-
-    This is the building block fro the lstm class
+    sLSTMCell is a single cell from the xLSTM paper.
 
     Parameters:
-    input_size: the number of features that the LSTMCell should expect
-    hidden_size: the number of hidden features the LSTMCell should create
-    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
+        input_size (int): The number of features that the LSTMCell should expect.
+        hidden_size (int): The number of hidden features the LSTMCell should create.
+        bias (bool): Defaults to True. Adds the bias to the weighted sum of inputs before applying the activation function.
 
-    Variables:
     States:
-        c_t: cell state
-            The cell state acts as the memory component by storing and maintaining information over long sequences
-        n_t: normalizer state
-            The normalizer state modelates the infuence the forget and input gate over time
-        h_t: hidden state
-            The hidden state acts as the memory component by storing and maintaining information over long sequences
-        m_t: stabilizer state
-            stabilizes the input and forget gates so that there is not an overflow caused from the exponential activation function inside them
+        c_t (Tensor): Cell state. The cell state acts as the memory component by storing and maintaining information over long sequences.
+        n_t (Tensor): Normalizer state. The normalizer state modulates the influence of the forget and input gates over time.
+        h_t (Tensor): Hidden state. The hidden state acts as the memory component by storing and maintaining information over long sequences.
+        m_t (Tensor): Stabilizer state. Stabilizes the input and forget gates to prevent overflow caused by the exponential activation function inside them.
 
-        C_t_p: previous cell state
-            Stores the cells state at the previous time step t-1.
-        n_t_p: previous normalizer state
-            Stores the previous normalizer state at time step t-1.
-        h_t_p: previous hidden state
-            Store the previous hidden state at time step t-1.
-        m_t_p: previous stabilizer state
-            Store the previous stabilizer state at time step t-1.
+        C_t_p (Tensor): Previous cell state. Stores the cell state at the previous time step t-1.
+        n_t_p (Tensor): Previous normalizer state. Stores the previous normalizer state at time step t-1.
+        h_t_p (Tensor): Previous hidden state. Stores the previous hidden state at time step t-1.
+        m_t_p (Tensor): Previous stabilizer state. Stores the previous stabilizer state at time step t-1.
+
     Inputs:
-        x_t: input vector
-            Represents the input features at time step t.
-    Gates: 
-        i_t: input gate
-            Controls what new information from the current input and previous hidden cell state will be added to the cell state.
-        f_t: forget gate
-            Determines what information from the previous cell stae should be forgotten or retained fo the current time step.
-        o_t: output gate
-            Determines what parts of the cell state should be used to compute the hidden state.
-        stabil_i_t: stabil. input gate
-            The input gate with the added stabilization.
-        stabil_f_t: stabil forget gate
-            The forget gate withe the added stabilization.
-    Gating Factors: 
-        r_z: gating factor for cell input
-        r_i: gating factor for input gate
-        r_f: gating factor for forget gate
-        r_o: gating factor for output gate
+        x_t (Tensor): Input vector. Represents the input features at time step t.
+
+    Gates:
+        i_t (Tensor): Input gate. Controls what new information from the current input and previous hidden cell state will be added to the cell state.
+        f_t (Tensor): Forget gate. Determines what information from the previous cell state should be forgotten or retained for the current time step.
+        o_t (Tensor): Output gate. Determines what parts of the cell state should be used to compute the hidden state.
+        stabil_i_t (Tensor): Stabilized input gate. The input gate with added stabilization.
+        stabil_f_t (Tensor): Stabilized forget gate. The forget gate with added stabilization.
+
+    Gating Factors:
+        r_z (Tensor): Gating factor for cell input.
+        r_i (Tensor): Gating factor for input gate.
+        r_f (Tensor): Gating factor for forget gate.
+        r_o (Tensor): Gating factor for output gate.
+
     Weights:
-        w_i: input gate weights
-        w_f: forget gate weights
-        w_o: output gate weights
+        w_i (Tensor): Input gate weights.
+        w_f (Tensor): Forget gate weights.
+        w_o (Tensor): Output gate weights.
+
     Biases:
-        b_i: input gate bias
-        b_f: forget gate bias
-        b_o: output gate bias
+        b_i (Tensor): Input gate bias.
+        b_f (Tensor): Forget gate bias.
+        b_o (Tensor): Output gate bias.
+
     Symbols:
-        \sigma: sigmoid function 
-        \odot: hadamard product
-        ^T: matric transpose
-        \exp: exponent
-        \frac: fraction
-        \sqrt: square root
-        \log: logarithm
-        \tanh: tanh
-        \max: max
+        \sigma: Sigmoid function.
+        \odot: Hadamard product.
+        ^T: Matrix transpose.
+        \exp: Exponent.
+        \frac: Fraction.
+        \sqrt: Square root.
+        \log: Logarithm.
+        \tanh: Tanh.
+        \max: Maximum.
+
     Forward Pass:
         \begin{align}
         c_t &= f_t \odot c_{tp} + i_t \odot z_t \tag{8} \\
@@ -115,7 +105,7 @@ class sLSTMCell(nn.Module):
     '''
 
 
-    def __init__(self, name, input_size, hidden_size, bias=True): 
+    def __init__(self, input_size, hidden_size, bias=True, name='sLSTMCell'): 
         super(sLSTMCell, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -127,6 +117,32 @@ class sLSTMCell(nn.Module):
         self.reset_parameters()
 
         self.display_features()
+
+    def forward(self, input, c_t_p, h_t_p, n_t_p, m_t_p):
+        #encode the weights with the input with the hidden with the bias
+        gates = self.w(input) + self.r(h_t_p)
+        # split into their respective gates
+        cell_input, input_gate, forget_gate, output_gate = gates.chunk(4,1)
+
+        #apply the activation functions
+        z_t = torch.tanh(cell_input)
+        i_t = torch.exp(input_gate)
+        f_t = torch.exp(forget_gate)
+        o_t = torch.sigmoid(output_gate)
+
+        #creathe the stabilizer state
+        m_t = torch.max((torch.log(f_t) + m_t_p), torch.log(i_t))
+
+        #apply the stabilize fate  to the inpud and forget gates
+        stabil_i_t = torch.exp(torch.log(i_t) - m_t)
+        stabil_f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+        #update the states
+        c_t = stabil_f_t * c_t_p + i_t * z_t
+        n_t = stabil_f_t * n_t_p + stabil_i_t
+        h_t = o_t * (c_t / n_t)
+
+        #pass forward the new states
+        return h_t, c_t, h_t, n_t, m_t
 
     def reset_parameters(self):
         std = 1.0 / np.sqrt(self.hidden_size)
@@ -142,63 +158,6 @@ class sLSTMCell(nn.Module):
         print(f'Number of input features for r: {self.r.in_features}')
         print(f'Number of output features for r: {self.r.out_features}')
         print()
-
-
-    def forward(self, input, c_t_p, h_t_p, n_t_p, m_t_p):
-        #encode the weights with the input with the hidden with the bias
-        gates = self.w(input) + self.r(h_t_p)
-        print(f'gates shape {gates.shape}')
-        # split into their respective gates
-        cell_input, input_gate, forget_gate, output_gate = gates.chunk(4,1)
-
-
-        #apply the activation functions
-        z_t = torch.tanh(cell_input)
-        i_t = torch.exp(input_gate)
-        f_t = torch.exp(forget_gate)
-        o_t = torch.sigmoid(output_gate)
-        
-        print(f'cell_input shape: {cell_input.shape}')
-        print(f'input_gate shape: {input_gate.shape}')
-        print(f'forget_gate shape: {forget_gate.shape}')
-        print(f'output_gate shape: {output_gate.shape}')
-        print()
-        print(f'z_t shape: {z_t.shape}')
-        print(f'i_t shape: {i_t.shape}')
-        print(f'f_t shape: {f_t.shape}')
-        print(f'o_t shape: {o_t.shape}')
-        print()
-        print(f'input shape: {input.shape}')
-        print(f'c_t_p shape: {c_t_p.shape}')
-        print(f'h_t_p shape: {h_t_p.shape}')
-        print(f'n_t_p shape: {n_t_p.shape}')
-        print(f'm_t_p shape: {m_t_p.shape}')
-
-
-        #creathe the stabilizer state
-        m_t = torch.max((torch.log(f_t) + m_t_p), torch.log(i_t))
-        print()
-        print(f'm_t shape: {m_t.shape}')
-
-        #apply the stabilize fate  to the inpud and forget gates
-        stabil_i_t = torch.exp(torch.log(i_t) - m_t)
-        stabil_f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
-        print()
-        print(f'stabil_i_t shape {stabil_i_t.shape}')
-        print(f'stabil_f_t shape {stabil_i_t.shape}')
-        print()
-        #update the states
-        c_t = stabil_f_t * c_t_p + i_t * z_t
-        n_t = stabil_f_t * n_t_p + stabil_i_t
-        h_t = o_t * (c_t / n_t)
-
-        print(f'c_t shape: {c_t.shape}')
-        print(f'n_t shape: {n_t.shape}')
-        print(f'h_t shape: {h_t.shape}')
-        print()
-        #pass forward the new states
-        return h_t, c_t, h_t, n_t, m_t
-
     
 class sLSTM(nn.Module):
     '''
@@ -223,8 +182,8 @@ class sLSTM(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.relu = nn.ReLU()
 
-        self.l1 = sLSTMCell('Cell 1', input_size, hidden_size, bias)
-        self.l2 = sLSTMCell('Cell 2', hidden_size, hidden_size, bias)
+        self.l1 = sLSTMCell(input_size, hidden_size, bias, 'Cell 1')
+        self.l2 = sLSTMCell(hidden_size, hidden_size, bias, 'Cell 2')
 
         # Create the Linear layers
         self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
