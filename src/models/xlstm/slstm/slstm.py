@@ -165,6 +165,7 @@ class sLSTMCell(nn.Module):
 
 
 '''
+### TODO rewrite this it is not a true gated mlp
 class GatedMLP(nn.Module):
     def __init__(self, input_size, output_size, projection_factor=4/3):
         super(GatedMLP, self).__init__()
@@ -176,7 +177,28 @@ class GatedMLP(nn.Module):
         return x * gate
 
 class sLSTMBlock(nn.Module):
-    def __init__(self,input_size, hidden_size, bias=True, name="sLSTMBlock", in_channels=19, out_channels=64, kernel_size=5, stride=1, padding=1):
+    '''
+    sLSTMBlock constructs a block for a stacked sLSTM model with normalization, convolution, sLSTM, and gated MLP layers.
+
+    Parameters:
+    - input_size (int): The expected input size for the block.
+    - hidden_size (int): The hidden size for the sLSTM layer.
+    - bias (bool): If True, introduces a bias to the sLSTM layer (default: True).
+    - name (str): Used for identifying the model when built into a stack.
+    - in_channels (int): Number of input channels for the convolutional layer (default: 19).
+    - out_channels (int): Number of output channels for the convolutional layer (default: 64).
+    - kernel_size (int): Kernel size for the convolutional layer (default: 4).
+    - stride (int): Stride for the convolutional layer (default: 1).
+    - padding (int): Padding for the convolutional layer (default: 1).
+
+    Variables:
+    - layer_norm (nn.LayerNorm): Normalizes the inputs to each layer to enhance generalization.
+    - conv4 (nn.Conv1d): 1D convolutional layer.
+    - sLSTM_cell (sLSTMCell): The sLSTM layer.
+    - group_norm (nn.GroupNorm): Divides the channels of the layer into several groups and normalizes the activation within each group separately.
+    - gate_mlp_1-3 (GatedMLP): Uses the GatedMLP to capture spatial interactions across the sequence elements without using attention mechanisms.
+    '''
+    def __init__(self,input_size, hidden_size, bias=True, name="sLSTMBlock", in_channels=19, out_channels=64, kernel_size=4, stride=1, padding=1):
         super(sLSTMBlock, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -192,6 +214,58 @@ class sLSTMBlock(nn.Module):
         self.gate_mlp_3 = GatedMLP(input_size=1, output_size=1, projection_factor=3/4)
 
     def forward(self,x):
+        '''
+        Forward pass follows the schematic provided in the xLSTM paper on page 29.
+
+        Input and Residual Structure:
+        The input to the block is embedded within a pre-LayerNorm (LN) residual structure. 
+        This structure helps in stabilizing the learning process by normalizing the input data.
+
+        Causal Convolution with Swish Activation:
+        Optionally, the input is passed through a causal convolution layer with a window size of 4. 
+        This convolution layer includes a Swish activation function. 
+        The Swish activation helps in smoothing the output and improving the model's performance.
+        The causal convolution is applied to the input and forget gates.
+
+        sLSTM Components:
+        The sLSTM block includes four main components: input gate (i), forget gate (f), cell update (z), and output gate (o).
+        Each of these gates processes the input through a block-diagonal linear layer.
+
+        Block-Diagonal Linear Layer:
+        Each gate (i, f, z, o) has its input processed through a block-diagonal linear layer. 
+        This layer has four diagonal blocks or "heads," 
+        corresponding to the recurrent gate pre-activations from the last hidden state.
+        The circular arrows indicate the recurrent connections within each head, 
+        showing the recurrent nature of the sLSTM with four heads.
+
+        GroupNorm Layer:
+        After processing through the sLSTM gates, the resulting hidden state undergoes GroupNorm (GN). 
+        This normalization is done head-wise, similar to LayerNorm but applied to each of the four heads individually.
+
+        Gated MLP with GeLU Activation:
+        The output from the GroupNorm layer is then passed through a Gated MLP (Multi-Layer Perceptron). 
+        The MLP uses a GeLU (Gaussian Error Linear Unit) activation function. 
+        The projection factor (PF) of 4/3 is applied to up- and down-project the output to match parameters. 
+        This step adjusts the dimensions of the output appropriately.
+
+        Combining Outputs and Residual Connection:
+        The outputs from the Gated MLP are combined and passed through another projection layer with a projection factor (PF) of 3/4.
+        The final output is combined with the residual connection (indicated by the "+" symbol), 
+        ensuring that the input is added to the output, maintaining the residual nature of the block.
+
+        LayerNorm:
+        The final combined output is passed through a LayerNorm layer (LN), 
+        which normalizes the combined output before it is passed on to the next stage or block.
+
+        In summary, the sLSTM block depicted in the schematic involves several intricate layers and processes:
+        Causal convolution with Swish activation for initial input processing.
+        sLSTM gates (i, f, z, o) with block-diagonal linear layers for recurrent processing.
+        GroupNorm for head-wise normalization.
+        Gated MLP with GeLU activation and specific projection factors for dimension adjustments.
+        Residual connections and final LayerNorm for stabilized output.
+        '''
+
+        ## TODO rewrite this it is not correct
         out = self.layer_norm(x)
         out1 = out.copy()
 
@@ -226,15 +300,29 @@ class sLSTMBlock(nn.Module):
 '''
 class sLSTM(nn.Module):
     '''
-    Uses the LSTMCell class and nn.Linear class to contruct a regressor LSTM
+    Constructs a regression sLSTM model using sLSTMCell and nn.Linear.
 
     Parameters:
-    input_size: the number of features that the LSTM should expect
-    hidden_size: the number of hidden features the LSTM should create
-    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
-    num_layers: number of layers the LSTM will have in the stack
-    output_size: number of values to predict, since we are training it as a regressor we will 
+    - input_size (int): Number of input features for the sLSTM.
+    - hidden_size (int): Number of hidden units in the sLSTM.
+    - bias (bool): If True, adds a learnable bias to the sLSTM cells (default: True).
+    - num_layers (int): Number of stacked sLSTM layers.
+    - output_size (int): Number of output values to predict.
 
+    Variables:
+    - dropout (nn.Dropout): Dropout layer with a dropout probability of 0.1, applied between fully connected layers.
+    - relu (nn.ReLU): ReLU activation function applied between fully connected layers to introduce non-linearity.
+    - l1 (sLSTMCell): First sLSTM cell, processing input features and producing hidden state.
+    - l2 (sLSTMCell): Second sLSTM cell, taking hidden state from the first cell and producing further hidden states.
+    - fc1 (nn.Linear): Fully connected layer transforming hidden state to half its size.
+    - fc2 (nn.Linear): Fully connected layer transforming to a quarter of the previous size.
+    - fc3 (nn.Linear): Fully connected layer producing the final output.
+
+    Forward Pass:
+    - Initializes hidden states and cell states to zeros.
+    - Processes input through sLSTM cells for each time step.
+    - Applies fully connected layers with ReLU and dropout.
+    - Returns the final output after processing through the fully connected layers.
     '''
     def __init__(self, input_size=19, hidden_size=200, num_layers=2, bias=True, output_size=1):
         super(sLSTM, self).__init__()
@@ -267,7 +355,7 @@ class sLSTM(nn.Module):
         for time_step in range(input.size(1)):  
             x = input[:, time_step, :].cuda()
 
-            #possible bugs with hor the hidden states are being handled
+            #possible bugs with how the hidden states are being handled
             out, c[0], h[0], n[0], m[0] = self.l1(x, c[0], h[0], n[0], m[0])
             out, c[1], h[1], n[1], m[1] = self.l1(out, c[1], h[1], n[1], m[1])
             
