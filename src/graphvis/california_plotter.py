@@ -23,7 +23,7 @@ class California_Plot:
         
         self.df['cases_bins'] = pd.cut(self.df[self.color], bins=bins, labels=labels)
         
-        discrete_colors = ['#d3d3d3', '#e50000', '#dc0000', '#d40000', '#cc0000', '#c40000', '#bc0000', '#b40000', '#ac0000', '#a40000', '#9c0000', '#940000', '#8b0000', '#830000', '#7b0000', '#730000', '#6b0000', '#630000', '#5b0000', '#530000', '#4b0000', '#430000', '#3b0000']
+        discrete_colors = ['#d8dee9', '#e50000', '#dc0000', '#d40000', '#cc0000', '#c40000', '#bc0000', '#b40000', '#ac0000', '#a40000', '#9c0000', '#940000', '#8b0000', '#830000', '#7b0000', '#730000', '#6b0000', '#630000', '#5b0000', '#530000', '#4b0000', '#430000', '#3b0000']
         color_scale = dict(zip(labels, discrete_colors))
 
         self.fig = px.choropleth(
@@ -40,6 +40,7 @@ class California_Plot:
         self.fig.update_geos(
             fitbounds="locations",
             visible=False,
+            bgcolor='#d8dee9',
             projection_scale=7,
             center={"lat": 37.5, "lon": -119.5},
             lataxis_range=[32.5, 42.0],
@@ -48,6 +49,9 @@ class California_Plot:
 
         self.fig.update_layout(
             title_text=self.title,
+            showlegend=False,
+            paper_bgcolor='#d8dee9',
+            plot_bgcolor='#d8dee9',
             title_x=0.5
         )
 
@@ -55,5 +59,5 @@ class California_Plot:
 
     def save(self, file_path):
         if self.fig:
-            self.fig.write_image(file_path)
+            self.fig.write_html(file_path)
 
