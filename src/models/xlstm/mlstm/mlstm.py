@@ -197,40 +197,51 @@ class mLSTMBlock(nn.Module):
 
     def forward(self, x):
         r'''
-Forward pass follows the schematic of the mLSTM block on page 30 of the xLSTM paper.
+        Forward pass follows the schematic of the mLSTM block on page 30 of the xLSTM paper.
 
-Residual Structure and Input Processing
-    Residual Structure: The mLSTM block is embedded in a pre-LayerNorm (LN) residual structure, 
-    which helps stabilize the training by normalizing the inputs.
-    Input Up-Projection: The input is first up-projected with a projection factor (PF) of 2. 
-    This means that the dimensionality of the input is increased by a factor of 2.
+        Residual Structure and Input Processing
+        Residual Structure: The mLSTM block is embedded in a pre-LayerNorm (LN) residual structure, 
+        which helps stabilize the training by normalizing the inputs.
+        Input Up-Projection: The input is first up-projected with a projection factor (PF) of 2. 
+        This means that the dimensionality of the input is increased by a factor of 2.
 
-Projection for Output Gate and mLSTM Cells
-    External Output Gate: The up-projected input is split into two parts. 
-    One part is used for an externalized output gate, and the other part is used as input for the mLSTM cells.
+        Projection for Output Gate and mLSTM Cells
+        External Output Gate: The up-projected input is split into two parts. 
+        One part is used for an externalized output gate, 
+        and the other part is used as input for the mLSTM cells.
 
-Convolution and Skip Connection
-    Causal Convolution: The input intended for the mLSTM cells undergoes a dimension-wise causal convolution with a kernel size of 4 (Conv4). 
-    This step ensures that the model maintains causal relationships within the sequence.
-    Swish Activation: The convolved input is then activated using the Swish function,
-    which helps in introducing non-linearity.
-    Learnable Skip Connection (LSkip): There is a learnable skip connection which allows the input to bypass the mLSTM cells and be directly added to the output after the mLSTM processing.
+        Convolution and Skip Connection
+        Causal Convolution: The input intended for the mLSTM cells undergoes a dimension-wise causal convolution 
+        with a kernel size of 4 (Conv4). 
+        This step ensures that the model maintains causal relationships within the sequence.
+        Swish Activation: The convolved input is then activated using the Swish function,
+        which helps in introducing non-linearity.
+        Learnable Skip Connection (LSkip): There is a learnable skip connection which allows the input to bypass 
+        the mLSTM cells and be directly added to the output after the mLSTM processing.
 
-Block-Diagonal Projection
-    Input q and k: The inputs q (queries) and k (keys) are obtained via block-diagonal projection matrices of block size 4. This means that the projection is applied separately to blocks of size 4 within the input.
-    Values v: The values v are fed directly to the mLSTM cells, skipping the convolution part.
+        Block-Diagonal Projection
+        Input q and k: The inputs q (queries) and k (keys) are obtained via block-diagonal projection matrices of block size 4. 
+        This means that the projection is applied separately to blocks of size 4 within the input.
+        Values v: The values v are fed directly to the mLSTM cells, skipping the convolution part.
 
-mLSTM Sequence Mixing
-    mLSTM Cells: The mLSTM cells, which are multi-headed (NH=4), perform the sequence mixing. They process the q, k, and v inputs to produce the mixed sequence output.
-    GroupNorm (GN): The outputs from the mLSTM cells are normalized using GroupNorm. This is done in a head-wise manner, applying layer normalization separately to each of the four heads.
+        mLSTM Sequence Mixing
+        mLSTM Cells: The mLSTM cells, which are multi-headed (NH=4), perform the sequence mixing. 
+        They process the q, k, and v inputs to produce the mixed sequence output.
+        GroupNorm (GN): The outputs from the mLSTM cells are normalized using GroupNorm. 
+        This is done in a head-wise manner, applying layer normalization separately to each of the four heads.
 
-Final Output Processing
-    Adding Skip Connection: The learnable skip input is added to the normalized mLSTM output.
-    Gated Component-Wise: The result is then gated component-wise with the external output gate. This gating mechanism controls the flow of information based on the output gate’s parameters.
-    Down-Projection: Finally, the output is down-projected to its original dimensionality, completing the processing within the mLSTM block.
+        Final Output Processing
+        Adding Skip Connection: The learnable skip input is added to the normalized mLSTM output.
+        Gated Component-Wise: The result is then gated component-wise with the external output gate. 
+        This gating mechanism controls the flow of information based on the output gate's parameters.
+        Down-Projection: Finally, the output is down-projected to its original dimensionality, 
+        completing the processing within the mLSTM block.
 
-Summary
-The mLSTM block processes inputs through a combination of up-projection, causal convolution, and multi-headed sequence mixing. It employs advanced normalization techniques like GroupNorm and a residual structure to stabilize training. The use of learnable skip connections and gating mechanisms further enhances its ability to capture and propagate important features through the network.
+        Summary
+        The mLSTM block processes inputs through a combination of up-projection, causal convolution, and multi-headed sequence mixing. 
+        It employs advanced normalization techniques like GroupNorm and a residual structure to stabilize training. 
+        The use of learnable skip connections and gating mechanisms further enhances 
+        its ability to capture and propagate important features through the network.
         '''
         
         out = self.layer_norm(x)
