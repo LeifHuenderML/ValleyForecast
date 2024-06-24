@@ -25,13 +25,19 @@
  * THE SOFTWARE.
 """
 
-import torch
+import sys
 import time
+import torch
 import numpy as np
+import pandas as pd
 import torch.nn as nn
-from mlstm import mlstm
 from slstm import slstm
-
+from mlstm import mlstm
+from pathlib import Path
+import torch.optim as optim
+import plotly.express as px
+from itertools import product
+from torch.utils.data import DataLoader
 
 class xLSTM(nn.Module):
     '''
@@ -134,6 +140,7 @@ class Trainer():
             print(f'Epoch {epoch} RMSE Loss: {avg_loss}')
             epoch += 1
         print(f'Final Epoch {epoch} RMSE Loss: {avg_loss}')
+        return self.model, self.losses
 
     
     def checkpoint_model(self, loss):
@@ -193,7 +200,7 @@ class Lego(nn.Module):
     def forward(self, x):
         for layer in self.block_layers:
             x = layer(x)
-            
+
         out = self.fc1(out)
         out = self.relu(out)
         out = self.dropout(out)
@@ -205,3 +212,51 @@ class Lego(nn.Module):
 
         return out
         
+
+class GridSearch():
+    '''
+    Runs a search over a dict of parameters that look like this.
+    params = {
+        input_size=[19],    #keep this fixed
+        hidden_size=[200],
+        bias=[True],        #keep this fixed
+        name=['xLSTM'],     #keep this fixed
+        blocks=['sms', 'msm', 'smms', 'ss', 'mm', 's', 'm'],
+        epochs=[100]        #keep this fixed
+
+    }
+    '''
+    def __init__(self, train_loader,):
+        self.train_loader = train_loader
+        self.train_loss_df = pd.DataFrame()
+
+    def search(self, param_dict):
+        keys = param_dict.keys()
+        values = param_dict.values()
+        print(f'Search Space: {len(list(product(*values)))}')
+        current_train_min = float('inf')
+
+        best_param_combo = ''
+        # creates the cartesian product of all the combinations for searching over then loopss through them
+        for combo in product(*values):
+            param_combo = dict(zip(keys, combo))
+            train_losses = self.evaluate_model(**param_combo)
+            self.train_loss_df = pd.concat([self.train_loss_df, pd.Series(train_losses)])
+
+            if (min(train_losses) < current_train_min): 
+                current_train_min = min(train_losses)
+                best_param_combo = param_combo
+                file = open('search.txt', 'w')
+                file.write('Min Train RMSE: ' + str(current_train_min))
+                file.close()
+        
+        return current_train_min, best_param_combo
+
+    def evaluate_model(self, input_size, hidden_size, bias, name, blocks, epochs):
+        model = Lego(input_size=input_size, hidden_size=hidden_size, bias=bias, name=name)
+        model.build(blocks=blocks)
+
+        trainer = Trainer(model, self.train_loader, epochs)
+        _, train_losses = trainer.train(epochs=100)
+        return train_losses
+    
