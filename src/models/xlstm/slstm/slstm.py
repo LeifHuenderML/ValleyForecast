@@ -175,7 +175,14 @@ class GatedMLP(nn.Module):
     def forward(self, x):
         gate = torch.sigmoid(self.gate(x))
         return x * gate
+''''
 
+
+
+
+
+
+'''
 class sLSTMBlock(nn.Module):
     '''
     sLSTMBlock constructs a block for a stacked sLSTM model with normalization, convolution, sLSTM, and gated MLP layers.
@@ -185,20 +192,15 @@ class sLSTMBlock(nn.Module):
     - hidden_size (int): The hidden size for the sLSTM layer.
     - bias (bool): If True, introduces a bias to the sLSTM layer (default: True).
     - name (str): Used for identifying the model when built into a stack.
-    - in_channels (int): Number of input channels for the convolutional layer (default: 19).
-    - out_channels (int): Number of output channels for the convolutional layer (default: 64).
-    - kernel_size (int): Kernel size for the convolutional layer (default: 4).
-    - stride (int): Stride for the convolutional layer (default: 1).
-    - padding (int): Padding for the convolutional layer (default: 1).
 
     Variables:
     - layer_norm (nn.LayerNorm): Normalizes the inputs to each layer to enhance generalization.
-    - conv4 (nn.Conv1d): 1D convolutional layer.
+    - conv4 (nn.Conv1d): 1D convolutional layer with window size 4.
     - sLSTM_cell (sLSTMCell): The sLSTM layer.
     - group_norm (nn.GroupNorm): Divides the channels of the layer into several groups and normalizes the activation within each group separately.
     - gate_mlp_1-3 (GatedMLP): Uses the GatedMLP to capture spatial interactions across the sequence elements without using attention mechanisms.
     '''
-    def __init__(self,input_size, hidden_size, bias=True, name="sLSTMBlock", in_channels=19, out_channels=64, kernel_size=4, stride=1, padding=1):
+    def __init__(self,input_size, hidden_size, bias=True, name="sLSTMBlock", ):
         super(sLSTMBlock, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -206,7 +208,14 @@ class sLSTMBlock(nn.Module):
         self.name = name
 
         self.layer_norm = nn.LayerNorm(input_size)
+        
+        in_channels=19
+        out_channels=64
+        kernel_size=4
+        stride=1
+        padding=1
         self.conv4 = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
+
         self.sLSTM_cell = sLSTMCell(input_size, hidden_size, bias, name+' sLSTMCell_1')
         self.group_norm = nn.GroupNorm(num_groups=1,num_channels=1)
         self.gate_mlp_1 = GatedMLP(input_size=1, output_size=1)

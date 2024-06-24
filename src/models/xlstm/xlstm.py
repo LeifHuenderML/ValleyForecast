@@ -33,6 +33,28 @@ from slstm import slstm
 
 
 class xLSTM(nn.Module):
+    '''
+    This is a xLSTM regressor meant to process sequential data and produce a regressor value. 
+    It consists of 4 alternately stacked mLSTM blocks and sLSTM blocks folowed by a 3 layer mlp;
+    that introduces nonlinearalities through relu and increased robustness through dropout.
+
+    Parameters:
+    - input_size (int): The expected input size for the model.
+    - hidden_size (int): The hidden size that will be used in all the sLSTM and mLSTM blocks.
+    - bias (bool): If True, introduces a bias to each of the mLSTM and sLSTM blocks (default: True).
+    - name (str): Used for identifying the model (default: 'xLSTM').
+
+    Variables:
+    - dropout (nn.Dropout): Dropout layer with a dropout probability of 0.1, applied between fully connected layers.
+    - relu (nn.ReLU): ReLU activation function applied between fully connected layers to introduce non-linearity.
+    - mBlock1 (mLSTMBlock): First mLSTMBlock, processes input feature and produces a hidden state
+    - sBlock1 (sLSTMBlock): First sLSTMBlock, processes the hidden state from mBlock1 and produces a new hidden state
+    - mBlock2 (mLSTMBlock): Second mLSTMBlock, processes the hidden state from sBlock1 and produces a new hiden state
+    - sBlock2 (sLSTMBlock): Second sLSTMBlock, processes the hidden state from mBlock1 and produces a new hiden state
+    - fc1 (nn.Linear): Fully connected layer transforming hidden state to half its size.
+    - fc2 (nn.Linear): Fully connected layer transforming to a quarter of the previous size.
+    - fc3 (nn.Linear): Fully connected layer producing the final output.
+    '''
     def __init__(self,input_size, hidden_size, bias=True, name='xLSTM'):
         super(xLSTM, self).__init__()
         self.input_size = input_size
