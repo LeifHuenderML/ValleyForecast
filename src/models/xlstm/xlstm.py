@@ -27,6 +27,7 @@
 
 import torch
 import time
+import numpy as np
 import torch.nn as nn
 from mlstm import mlstm
 from slstm import slstm
@@ -92,6 +93,57 @@ class xLSTM(nn.Module):
         return out
     
 class Trainer():
-    def __init__(self):
+    def __init__(self, model, loader, epochs=100, checkpoint_path='best_model.pt', model_checkpoint=True, early_stopping=True, patience=10, delta=10):
         super(Trainer, self).__init__()
-        
+        self.model = model
+        self.loader = loader
+        self.epochs = epochs
+        self.model_checkpoint = model_checkpoint
+        self.early_stopping = early_stopping
+        self.checkpoint_path = checkpoint_path
+        self.patience = patience
+        self.delta = delta
+        self.patience_tracker = 0
+        self.losses = []
+ 
+    def train(self):
+        epoch = 1
+        stop = False
+        while epoch <= self.epochs and stop:
+            num_batches = len(self.loader)
+            total_loss = 0
+            self.model.train()
+            for x, y in self.loader:
+                x, y = x.to('cuda'), y.to('cuda')
+                output = self.model(x)
+                loss = self.loss_fn(output,y)
+                self.optim.zero_grad()
+                loss.backward()
+                self.optim.step()
+                total_loss += loss.item()
+
+            
+            avg_loss = total_loss/num_batches
+            avg_loss = np.sqrt(avg_loss)
+
+            self.checkpoint_model(avg_loss)
+
+            stop = self.early_stop()
+
+            self.losses.append(avg_loss)
+            print(f'Epoch {epoch} RMSE Loss: {avg_loss}')
+            epoch += 1
+        print(f'Final Epoch {epoch} RMSE Loss: {avg_loss}')
+
+    
+    def checkpoint_model(self, loss):
+        if loss < min(self.losses) and self.model_checkpoint:
+                torch.save(self.model.state_dict(), self.checkpoint_path)
+
+    def early_stop(self, loss):
+        if self.early_stopping:
+            if (loss + self.delta) > min(self.losses):
+                self.patience_tracker += 1
+            if self.patience_tracker == self.patience:
+                return True
+        return False

@@ -155,7 +155,7 @@ class mLSTMcell(nn.Module):
         print(f'Number of input features for w: {self.w.in_features}')
         print(f'Number of output features for w: {self.w.out_features}')
         print()
-''''
+'''
 
 
 
@@ -222,7 +222,7 @@ class mLSTMBlock(nn.Module):
         Block-Diagonal Projection
         Input q and k: The inputs q (queries) and k (keys) are obtained via block-diagonal projection matrices of block size 4. 
         This means that the projection is applied separately to blocks of size 4 within the input.
-        Values v: The values v are fed directly to the mLSTM cells, skipping the convolution part.
+        Values v: The values v are fed directly to the block-diagonal projection matrices then to the mLSTM cells, skipping the convolution part.
 
         mLSTM Sequence Mixing
         mLSTM Cells: The mLSTM cells, which are multi-headed (NH=4), perform the sequence mixing. 
