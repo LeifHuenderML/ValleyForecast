@@ -2,9 +2,7 @@
 Forecasting Valley Fever Incidence via Enhanced xLSTM Models Trained on Comprehensive Meteorological Data
 
 # Abstract 
-
-#####insert this somewhere in the abstract
-We propose a simple question: How accurate can training predictive models become to correctly identify the weather pattersn that correlate to valley fever incidence?
+Coccioidomycosis (CM) is a fungal infection that is most commonly found in semi arid regions like California and Arizona. Previous researchers have established that there is indeed a strong correlation between number of incidences and weather patterns for a region. We propose a simple question: How accurate can training predictive models become to correctly identify the weather pattersn that correlate to valley fever incidence? We propose that modern machine learning architectures like Long Short Term Memory (LSTM) and extended long short term memory (xLSTM) are capable of outperforming more traditional statistical methods for predicting outbreak cases. We analyzed 846 LSTMs and ## insert number here ## xLSTMs with different finetuning metrics to cross analyze with Baseline Regression models and Multi Layer Perceptrons to find that the LSTM and xLSTM significantly outperform more traditional methods and lead to more accurate results. This demonstrably shows that there is a strong correlation between temporal microclimates and the effect it has on incidences in the region. From these understandings more modelling can be done to educate and inform planning on ways to tackle valley fever. For future work we propose dialing down each feature to see what feature have the greatest impact on CM and what combinations of these features. 
 
 # Keywords
 
