@@ -147,3 +147,61 @@ class Trainer():
             if self.patience_tracker == self.patience:
                 return True
         return False
+    
+
+class Lego(nn.Module):
+    '''
+    Takes a string and parses it to create a xLSTM model with the defined block stack. 
+    For instance smssm would create sLSTMBlock -> mLSTMBlock -> sLSTMBlock -> sLSTMBlock -> mLSTMBlock ->
+    '''
+    def __init__(self, input_size, hidden_size, bias, name):
+        super(Lego, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.name = name
+
+        self.block_layers = []
+
+        self.fc1 = nn.Linear()
+        self.fc2 = nn.Linear()
+        self.fc3 = nn.Linear()
+
+        self.dropout = nn.Dropout()
+        self.relu = nn.ReLU()
+
+    def build(self, blocks):
+        for index, block in enumerate(blocks):
+            if block == 's':
+                self.block_layers.append(slstm.sLSTMBlock(
+                    input_size=self.hidden_size,
+                    hidden_size=self.hidden_size,
+                    bias=self.bias,
+                    name='sLSTMBlock_layer'+ str(index)
+                ))
+            elif block == 'm':
+                self.block_layers.append(mlstm.mLSTMBlock(
+                    input_size=self.hidden_size,
+                    hidden_size=self.hidden_size,
+                    bias=self.bias,
+                    name='mLSTMBlock_layer'+ str(index)
+                ))
+            else:
+                raise ValueError(f"Invalid block value: {block}, block value can only be 'm' or 's'.")
+        self.block_layers[0].input_size = self.input_size
+
+    def forward(self, x):
+        for layer in self.block_layers:
+            x = layer(x)
+            
+        out = self.fc1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc3(out)
+        out = out.squeeze()
+
+        return out
+        
