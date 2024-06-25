@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from models.xLSTM.old_block import xLSTMBlock
+from models.xLSTM.old.old_block import xLSTMBlock
 
 class xLSTM(nn.Module):
     def __init__(self, input_size=19, hidden_size=256, num_layers=1, dropout=0.1):
@@ -18,8 +18,7 @@ class xLSTM(nn.Module):
         self.fc3 = nn.Linear(hidden_size//4, 1)
 
     def forward(self, x):
-        self.m1(x)
-        print(f"Input shape: {x.shape}")
+        # print(f"Input shape: {x.shape}")
         out, hidden = self.m1(x)
         # print(f"After m1 shape: {out.shape}")
         out, _ = self.s1(out, hidden)

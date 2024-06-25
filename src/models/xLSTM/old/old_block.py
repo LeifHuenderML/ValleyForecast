@@ -13,10 +13,10 @@ class xLSTMBlock(nn.Module):
         self.lstm_type = lstm_type
 
         if lstm_type == "slstm":
-            from models.xLSTM.old_slstm import sLSTM
+            from models.xLSTM.old.old_slstm import sLSTM
             self.lstm = sLSTM(input_size, hidden_size, num_layers, dropout)
         elif lstm_type == "mlstm":
-            from models.xLSTM.old_mlstm import mLSTM
+            from models.xLSTM.old.old_mlstm import mLSTM
             self.lstm = mLSTM(input_size, hidden_size, num_layers, dropout)
         else:
             raise ValueError(f"Invalid LSTM type: {lstm_type}")
