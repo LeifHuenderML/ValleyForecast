@@ -1,55 +1,131 @@
 import torch
+import numpy as np
 import torch.nn as nn
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+
+class sLSTMCell(nn.Module):
+    def __init__(self, input_size, hidden_size, ):
+        super(sLSTMCell, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.input_weights = nn.Linear(input_size, hidden_size * 4,device='cuda')
+        self.hidden_weights = nn.Linear(hidden_size, hidden_size*4,device='cuda')
+
+        self.reset_parameters()
+
+    def reset_parameters(self,):
+        std = 1.0 / np.sqrt(self.hidden_size)
+        for w in self.parameters():
+            w.data.uniform_(-std, std)
+    
+    def init_hidden(self, input):
+        hidden = Variable(input.new_zeros(input.size(0), self.hidden_size)).to('cuda')
+        return (hidden, hidden, hidden, hidden)
+
+    def forward(self, input, hidden=None):
+        if hidden is None:
+            hidden = self.init_hidden(input)
+        h_t_p, c_t_p, n_t_p, m_t_p = hidden
+        
+        gates = self.input_weights(input) + self.hidden_weights(h_t_p)
+        input_gate, forget_gate, cell_gate, output_gate = gates.chunk(4, 1)
+        
+        z_t = torch.tanh(cell_gate)
+        i_t = torch.exp(input_gate)  
+        f_t = torch.exp(forget_gate)  
+        o_t = torch.sigmoid(output_gate)
+        
+        m_t = torch.max(torch.log(f_t) + m_t_p, torch.log(i_t))  
+        
+        i_t_prime = torch.exp(input_gate - m_t)  
+        f_t_prime = torch.exp(forget_gate + m_t_p - m_t)  
+        
+        c_t = f_t_prime * c_t_p + i_t_prime * z_t
+        n_t = f_t_prime * n_t_p + i_t_prime
+        h_t = o_t * (c_t / n_t)
+        
+        return (h_t, c_t, n_t, m_t)
+    
+class sLSTMLayer(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(sLSTMLayer, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.slstm = sLSTMCell(input_size, hidden_size)
+
+    def forward(self, input, hidden=None):
+        outputs = []
+        for time_step in range(input.size(1)):
+            hidden = self.slstm(input[:,time_step,:], hidden)
+            outputs.append(hidden)
+        return outputs, hidden
 
 class sLSTM(nn.Module):
-    def __init__(self,input_size=19, hidden_size=365):
+    def __init__(self, input_size=19, hidden_size=256,):
         super(sLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
 
-        self.lstm = nn.LSTMCell(input_size,hidden_size)
+        self.slstm = sLSTMLayer(input_size, hidden_size)
+        self.fc1 = nn.Linear(hidden_size, hidden_size//2)
+        self.fc2 = nn.Linear(hidden_size//2, hidden_size//4)
+        self.fc3 = nn.Linear(hidden_size//4, 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.1)
 
-        self.exp_forget_gate = nn.Linear(hidden_size,hidden_size)
-        self.exp_input_gate = nn.Linear(hidden_size,hidden_size)
+    def forward(self, input):
+        out, hidden = self.slstm(input)
+        out = self.fc1(hidden[0])
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.fc3(out)
+        out = self.relu(out)
+        out = out.squeeze()
+        return out
 
-        self.reset_parameters()
+class sLSTMTrainer:
+    def __init__(self, loader):
+        super(sLSTMTrainer, self).__init__()
+        self.model = sLSTM().to('cuda')
+        self.loader = loader
+        self.loss_fn = nn.MSELoss()
+        self.optim = torch.optim.Adam(self.model.parameters(), lr=0.001)
+
+    def train(self, epochs):
+        losses = []
+        self.model.train()
+        for epoch in range(1, epochs+1):
+            num_batches = len(self.loader)
+            total_loss = 0
+            for x, y in self.loader:
+                x, y = x.to('cuda'), y.to('cuda')
+                output = self.model(x)
+                loss = self.loss_fn(output, y)
+                self.optim.zero_grad()
+                loss.backward()
+                self.optim.step()
+                total_loss += loss.item()
+            avg_loss = total_loss/num_batches
+            avg_loss = np.sqrt(avg_loss)
+            losses.append(avg_loss)
+            print(f'Epoch {epoch} RMSE Loss: {avg_loss}')
+        return losses
     
-    def reset_parameters(self,):
-        nn.init.xavier_uniform_(self.lstm.weight_ih)
-        nn.init.xavier_uniform_(self.lstm.weight_hh)
-        nn.init.zeros_(self.lstm.bias_ih)
-        nn.init.zeros_(self.lstm.bias_hh)
-        nn.init.xavier_uniform_(self.exp_forget_gate.weight)
-        nn.init.zeros_(self.exp_forget_gate.bias)
-        nn.init.xavier_uniform_(self.exp_input_gate.weight)
-        nn.init.zeros_(self.exp_input_gate.bias)
-
-    def init_hidden(self, batch_size):
-        h = torch.zeros(batch_size, self.hidden_size, device=self.lstm.weight_ih.device)
-        c = torch.zeros(batch_size, self.hidden_size, device=self.lstm.weight_ih.device)
-        return (h,c)
-    
-    def forward(self, input, hidden=None):
-        batch_size = input.size(0)
-        seq_length = input.size(1)
-
-        if hidden is None:
-            hidden = self.init_hidden(batch_size)
-        
-        out = []
-        for t in range(seq_length):
-            x = input[:,t,:]
-            h,c = self.lstm(x, hidden[0], hidden[1])
-
-            f = torch.exp(self.exp_forget_gate(h))
-            i = torch.exp(self.exp_input_gate(h))
-
-            c = f * c + i * self.lstm.weight_hh.new_zeros(batch_size, self.hidden_size)
-
-            x = h
-            hidden = (h,c)
-            out.append(x)
-        out = torch.stack(out, dim=1)
-        return out, hidden
 
 
+def main():
+    train = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/train.pt')
+    batch_size = 32
+    train_loader = DataLoader(train, batch_size, shuffle=True, drop_last=True)
+
+    trainer = sLSTMTrainer(train_loader)
+    trainer.train(100)
+
+if __name__ == "__main__":
+    main()
