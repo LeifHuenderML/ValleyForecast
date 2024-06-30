@@ -32,23 +32,9 @@ from torch import Tensor
 from torch.nn import Parameter
 from torch.autograd import Variable
 
-class LSTMCellv2(nn.Module):
-    '''
-    LSTMCell is a custom cell for an lstm created by Leif Huender with inspiration from https://github.com/georgeyiasemis/Recurrent-Neural-Networks-from-scratch-using-PyTorch
-
-    This is the building block fro the lstm class
-
-    Parameters:
-    input_size: the number of features that the LSTMCell should expect
-    hidden_size: the number of hidden features the LSTMCell should create
-    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
-
-    Variables:
-    xh: input projection that takes the input_size and projects it to the hidden size * 4. one for every gate
-    hh: recurrent projection that takes the hidden_size and projects it to the hidden size * 4. one for every gate
-    '''
+class sLSTMCell(nn.Module):
     def __init__(self, input_size, hidden_size, bias=True): 
-        super(LSTMCellv2, self).__init__()
+        super(sLSTMCell, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -63,24 +49,6 @@ class LSTMCellv2(nn.Module):
             w.data.uniform_(-std, std)
 
     def forward(self, input, hidden=None):
-        r'''
-        Inputs:
-              input: of shape (batch_size, input_size)
-              hidden: of shape (batch_size, hidden_size)
-        Outputs:
-              hy: of shape (batch_size, hidden_size)
-              cy: of shape (batch_size, hidden_size)
-
-        math::
-        \begin{array}{ll} \\
-            i_t = \sigma(W_{ii} x_t + b_{ii} + W_{hi} h_{t-1} + b_{hi}) \\
-            f_t = \sigma(W_{if} x_t + b_{if} + W_{hf} h_{t-1} + b_{hf}) \\
-            g_t = \tanh(W_{ig} x_t + b_{ig} + W_{hg} h_{t-1} + b_{hg}) \\
-            o_t = \sigma(W_{io} x_t + b_{io} + W_{ho} h_{t-1} + b_{ho}) \\
-            c_y = f_t \odot c_{t-1} + i_t \odot g_t \\
-            h_y = o_t \odot \tanh(c_t) \\
-        \end{array}
-        '''
 
         #initializes hidden for if the cell is the first layer
         if hidden is None:
@@ -110,20 +78,10 @@ class LSTMCellv2(nn.Module):
         return hy, (hy, cy)
 
     
-class LSTMv2(nn.Module):
-    '''
-    Uses the LSTMCell class and nn.Linear class to contruct a regressor LSTM
+class sLSTM(nn.Module):
 
-    Parameters:
-    input_size: the number of features that the LSTM should expect
-    hidden_size: the number of hidden features the LSTM should create
-    bias: defaults to true, add the bias to the weighted sum of inputs before applying the activation function
-    num_layers: number of layers the LSTM will have in the stack
-    output_size: number of values to predict, since we are training it as a regressor we will 
-
-    '''
     def __init__(self, input_size=19, hidden_size=200, num_layers=2, bias=True, output_size=1):
-        super(LSTMv2, self).__init__()
+        super(sLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -133,8 +91,8 @@ class LSTMv2(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.relu = nn.ReLU()
 
-        self.l1 = LSTMCellv2(input_size, hidden_size, bias)
-        self.l2 = LSTMCellv2(hidden_size, hidden_size, bias)
+        self.l1 = sLSTMCell(input_size, hidden_size, bias)
+        self.l2 = sLSTMCell(hidden_size, hidden_size, bias)
 
         # Create the Linear layers
         self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
