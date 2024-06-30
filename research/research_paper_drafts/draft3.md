@@ -184,8 +184,3 @@ References
   [23] Wilson, L., Ting, J., Lin, H., Shah, R., Maclean, M., Peterson, M. W., Stockamp, N., Libke, R., & Brown, P. (2019). The rise of valley fever: Prevalence and cost burden of coccidioidomycosis infection in California. International Journal of Environmental Research and Public Health, 16(7). https://doi.org/10.3390/ijerph16071113
 
   [24] Zeng, A., Chen, M., Zhang, L., & Xu, Q. (n.d.). Are Transformers Effective for Time Series Forecasting? https://github.com/cure-lab/LTSF-
-
-
-
-
-
