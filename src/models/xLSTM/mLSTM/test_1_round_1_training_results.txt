@@ -1,0 +1,9 @@
+Best Training RMSE Loss: 270.0349 at epoch 5
+Best Validation RMSE Loss: 106.0300 at epoch 5
+
+Epoch-wise losses:
+Epoch 1: Train RMSE = 287.5024, Val RMSE = 133.5024
+Epoch 2: Train RMSE = 283.2831, Val RMSE = 135.1904
+Epoch 3: Train RMSE = 278.2160, Val RMSE = 131.8549
+Epoch 4: Train RMSE = 281.6358, Val RMSE = 132.5125
+Epoch 5: Train RMSE = 270.0349, Val RMSE = 106.0300

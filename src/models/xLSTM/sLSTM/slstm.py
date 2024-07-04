@@ -53,29 +53,32 @@ class sLSTMCell(nn.Module):
         #initializes hidden for if the cell is the first layer
         if hidden is None:
             hidden = Variable(input.new_zeros(input.size(0), self.hidden_size))
-            hidden = (hidden, hidden)
+            hidden = (hidden, hidden, hidden, hidden)
 
-        hx, cx = hidden
+        h_t_p, c_t_p, m_t_p, n_t_p = hidden
 
         #computes the combined input to the input projection and the recurrent projection
-        gates = self.xh(input) + self.hh(hx)
+        gates = self.xh(input) + self.hh(h_t_p)
         
 
         #slits the gates into 4 equal parts along the second dimension (1)
         input_gate, forget_gate, cell_gate, output_gate = gates.chunk(4, 1)
 
         #apply the activation functions to the 4 gates
-        i_t = torch.sigmoid(input_gate)
-        f_t = torch.sigmoid(forget_gate)
-        g_t = torch.tanh(cell_gate)
+        i_t = torch.exp(input_gate)
+        f_t = torch.exp(forget_gate)
+        z_t = torch.tanh(cell_gate) #cell input
         o_t = torch.sigmoid(output_gate)
 
-        #compute the new cell state
-        cy = cx * f_t + i_t * g_t
-        #compute the new hidden state
-        hy = o_t * torch.tanh(cy)
+        m_t = torch.max(torch.log(f_t) + m_t_p, torch.log(i_t))
 
-        return hy, (hy, cy)
+        i_t = torch.exp(input_gate - m_t)
+        f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+
+        c_t = f_t * c_t_p + i_t * z_t
+        n_t = f_t * n_t_p + i_t
+        h_t = o_t * (c_t / n_t)
+        return h_t, (h_t, c_t, m_t, n_t)
 
     
 class sLSTM(nn.Module):
@@ -101,10 +104,13 @@ class sLSTM(nn.Module):
 
     def forward(self, input, hidden=None):
         batch_size = input.size(0)
+
         h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
         c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        m0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
+        n0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).requires_grad_().cuda()
 
-        hidden = [(h0[i], c0[i]) for i in range(self.num_layers)]
+        hidden = [(h0[i], c0[i], m0[i], n0[i]) for i in range(self.num_layers)]
         
         outputs = []
         for time_step in range(input.size(1)):  
