@@ -6,8 +6,8 @@ Valley Fever is a fungal infection you can get by breathing in spores from soil 
 This summer, I worked on a project to predict Valley Fever cases using weather data and artificial intelligence. The goal? To create a more accurate forecasting tool than what we currently have. And no it is not Chat GPT.
 Here's how it works:
 
-We feed weather data and past Valley Fever cases into a smart computer program.
-The program, which uses something called a Long Short-Term Memory network (or LSTM for short), learns patterns between weather and Valley Fever outbreaks.
+We feed weather data and past Valley Fever cases into a computer program.
+The program, which uses something called a Long Short-Term Memory(or LSTM for short), learns patterns between weather and Valley Fever outbreaks.
 It then predicts future cases based on new weather data.
 
 Now, you might be wondering, "What's this LSTM thing?" Think of it as the program's memory. Just like how you remember important events in your life but forget what you had for lunch last Tuesday, the LSTM learns to keep important weather patterns and forget the less relevant ones. This helps it make better predictions over time.
