@@ -4,3 +4,9 @@ Best Validation RMSE Loss: inf at epoch 0
 Epoch-wise losses:
 Epoch 1: Train RMSE = nan, Val RMSE = nan
 Epoch 2: Train RMSE = nan, Val RMSE = nan
+Epoch 3: Train RMSE = nan, Val RMSE = nan
+Epoch 4: Train RMSE = nan, Val RMSE = nan
+Epoch 5: Train RMSE = nan, Val RMSE = nan
+Epoch 6: Train RMSE = nan, Val RMSE = nan
+Epoch 7: Train RMSE = nan, Val RMSE = nan
+Epoch 8: Train RMSE = nan, Val RMSE = nan

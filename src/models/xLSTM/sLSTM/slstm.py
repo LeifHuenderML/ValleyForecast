@@ -81,7 +81,7 @@ class sLSTMCell(nn.Module):
         return h_t, (h_t, c_t, m_t, n_t)
 
     
-class sLSTM(nn.Module):
+class rigid_sLSTM(nn.Module):
 
     def __init__(self, input_size=19, hidden_size=200, num_layers=2, bias=True, output_size=1):
         super(sLSTM, self).__init__()
@@ -135,7 +135,37 @@ class sLSTM(nn.Module):
 
 
 
+    
+class sLSTM(nn.Module):
 
+    def __init__(self, input_size=19, hidden_size=200, bias=True):
+        super(sLSTM, self).__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        
+        self.l = sLSTMCell(hidden_size, hidden_size, bias).to('cuda')
+
+    def forward(self, input, hidden=None):
+        batch_size = input.size(0)
+
+        h0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+        c0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+        m0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+        n0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+
+        hidden = (h0, c0, m0, n0)        
+
+        outputs = []
+        for time_step in range(input.size(1)):  
+            x = input[:, time_step, :].cuda()
+            x, hidden = self.l(x, hidden)
+
+            outputs.append(x.unsqueeze(1))
+
+        # out = torch.cat(outputs, dim=1)[:, -1, :]  
+        return outputs
+    
 
 
 
