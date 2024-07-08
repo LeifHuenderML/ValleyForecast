@@ -51,43 +51,69 @@ class mLSTMCell(nn.Module):
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, input, hidden):
+    # def forward(self, input, hidden):
 
+    #     h_t_p, C_t_p, m_t_p, n_t_p = hidden
+
+    #     gates = self.xh(input)
+
+    #     input_gate, forget_gate, output_gate, query_input, key_input, value_input = gates.chunk(6,1)
+
+    #     k_t = 1/np.sqrt(self.hidden_size) * key_input
+
+    #     i_t = torch.exp(input_gate)
+    #     f_t = torch.exp(forget_gate)
+    #     o_t = torch.sigmoid(output_gate)
+
+    #     m_t = torch.max(torch.log(f_t) + m_t_p, torch.log(i_t))
+
+    #     i_t = torch.exp(input_gate - m_t)
+    #     f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+
+    #     C_t = (f_t.unsqueeze(2) * C_t_p + (i_t * value_input * k_t).unsqueeze(2)).squeeze(0)
+    #     n_t = f_t * n_t_p + i_t * k_t
+
+    #     # h_t = o_t * ((C_t * query_input) / torch.max(torch.abs(n_t * query_input), 1))
+    #     h_t = o_t * ((C_t @ query_input.unsqueeze(-1)).squeeze(-1) / torch.max(torch.abs(n_t * query_input), dim=1, keepdim=True)[0])
+    
+    #     return h_t, (h_t, C_t, m_t, n_t)
+
+    def forward(self, input, hidden):
         h_t_p, C_t_p, m_t_p, n_t_p = hidden
 
         gates = self.xh(input)
 
-        input_gate, forget_gate, output_gate, query_input, key_input, value_input = gates.chunk(6,1)
+        input_gate, forget_gate, output_gate, query_input, key_input, value_input = gates.chunk(6, 1)
 
-        k_t = 1/np.sqrt(self.hidden_size) * key_input
+        k_t = key_input / np.sqrt(self.hidden_size)
 
-        i_t = torch.exp(input_gate)
-        f_t = torch.exp(forget_gate)
+        # Use log-space computations
+        i_t = torch.log1p(torch.exp(input_gate))
+        f_t = torch.log1p(torch.exp(forget_gate))
         o_t = torch.sigmoid(output_gate)
 
-        m_t = torch.max(torch.log(f_t) + m_t_p, torch.log(i_t))
+        m_t = torch.max(f_t + m_t_p, i_t)
 
         i_t = torch.exp(input_gate - m_t)
-        f_t = torch.exp(torch.log(f_t) + m_t_p - m_t)
+        f_t = torch.exp(f_t + m_t_p - m_t)
 
-        C_t = (f_t.unsqueeze(2) * C_t_p + (i_t * value_input * k_t).unsqueeze(2)).squeeze(0)
+        # Use torch.where to avoid potential division by zero
+        C_t = torch.where(
+            f_t.unsqueeze(2) > 0,
+            f_t.unsqueeze(2) * C_t_p + (i_t * value_input * k_t).unsqueeze(2),
+            (i_t * value_input * k_t).unsqueeze(2)
+        ).squeeze(0)
+
         n_t = f_t * n_t_p + i_t * k_t
 
-        C_t_q_t = torch.bmm(C_t, query_input.unsqueeze(2)).squeeze(2)  # [32, 200]
-        
-        # Compute n_t^T q_t
-        n_t_T_q_t = torch.bmm(n_t.unsqueeze(1), query_input.unsqueeze(2)).squeeze()  # [32]
-        
-        epsilon = 1e-6  # Choose a small value
-        denominator = torch.max(n_t_T_q_t.abs(), torch.ones_like(n_t_T_q_t) * epsilon)
-        
-        # Compute h̃_t = C_t q_t / max{|n_t^T q_t|, 1}
-        h_tilde = C_t_q_t / denominator.unsqueeze(1)  # [32, 200]
-        
-        # Compute h_t = o_t ⊙ h̃_t
-        h_t = o_t * h_tilde  # [32, 200]
-        return h_t, (h_t, C_t, m_t, n_t)
+        # Use a small epsilon to prevent division by zero
+        epsilon = 1e-8
+        denominator = torch.max(torch.abs(n_t * query_input), dim=1, keepdim=True)[0].clamp(min=epsilon)
+        h_t = o_t * ((C_t @ query_input.unsqueeze(-1)).squeeze(-1) / denominator)
     
+        return h_t, (h_t, C_t, m_t, n_t)
+
+
 # def append_tensor_to_csv(tensor, filename):
 #     if tensor.dim() == 3:
 #         t = tensor.reshape(32,-1)
@@ -100,7 +126,7 @@ class mLSTMCell(nn.Module):
     
 class rigid_mLSTM(nn.Module):
     def __init__(self, input_size=19, hidden_size=200, num_layers=2, bias=True, output_size=1):
-        super(mLSTM, self).__init__()
+        super(rigid_mLSTM, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -201,84 +227,84 @@ class mLSTM(nn.Module):
 
 
 
-# def main():
-#     def trainer(model, epochs, train_loader, val_loader, loss_fn, optim):
-#         train_losses = []
-#         val_losses = []
-#         best_train_loss = float('inf')
-#         best_val_loss = float('inf')
-#         best_train_epoch = 0
-#         best_val_epoch = 0
+def main():
+    def trainer(model, epochs, train_loader, val_loader, loss_fn, optim):
+        train_losses = []
+        val_losses = []
+        best_train_loss = float('inf')
+        best_val_loss = float('inf')
+        best_train_epoch = 0
+        best_val_epoch = 0
 
-#         for epoch in range(1, epochs+1):
-#             # Training
-#             model.train()
-#             num_batches = len(train_loader)
-#             total_train_loss = 0
-#             for x, y in train_loader:
-#                 x, y = x.to('cuda'), y.to('cuda')
-#                 output = model(x)
-#                 loss = loss_fn(output, y)
-#                 optim.zero_grad()
-#                 loss.backward()
-#                 optim.step()
-#                 total_train_loss += loss.item()
+        for epoch in range(1, epochs+1):
+            # Training
+            model.train()
+            num_batches = len(train_loader)
+            total_train_loss = 0
+            for x, y in train_loader:
+                x, y = x.to('cuda'), y.to('cuda')
+                output = model(x)
+                loss = loss_fn(output, y)
+                optim.zero_grad()
+                loss.backward()
+                optim.step()
+                total_train_loss += loss.item()
             
-#             avg_train_loss = np.sqrt(total_train_loss / num_batches)
-#             train_losses.append(avg_train_loss)
+            avg_train_loss = np.sqrt(total_train_loss / num_batches)
+            train_losses.append(avg_train_loss)
             
-#             if avg_train_loss < best_train_loss:
-#                 best_train_loss = avg_train_loss
-#                 best_train_epoch = epoch
+            if avg_train_loss < best_train_loss:
+                best_train_loss = avg_train_loss
+                best_train_epoch = epoch
 
-#             # Validation
-#             model.eval()
-#             num_val_batches = len(val_loader)
-#             total_val_loss = 0
-#             with torch.no_grad():
-#                 for x, y in val_loader:
-#                     x, y = x.to('cuda'), y.to('cuda')
-#                     output = model(x)
-#                     loss = loss_fn(output, y)
-#                     total_val_loss += loss.item()
+            # Validation
+            model.eval()
+            num_val_batches = len(val_loader)
+            total_val_loss = 0
+            with torch.no_grad():
+                for x, y in val_loader:
+                    x, y = x.to('cuda'), y.to('cuda')
+                    output = model(x)
+                    loss = loss_fn(output, y)
+                    total_val_loss += loss.item()
             
-#             avg_val_loss = np.sqrt(total_val_loss / num_val_batches)
-#             val_losses.append(avg_val_loss)
+            avg_val_loss = np.sqrt(total_val_loss / num_val_batches)
+            val_losses.append(avg_val_loss)
             
-#             if avg_val_loss < best_val_loss:
-#                 best_val_loss = avg_val_loss
-#                 best_val_epoch = epoch
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_val_epoch = epoch
 
-#             print(f'Epoch {epoch} Train RMSE Loss: {avg_train_loss:.4f}, Val RMSE Loss: {avg_val_loss:.4f}')
+            print(f'Epoch {epoch} Train RMSE Loss: {avg_train_loss:.4f}, Val RMSE Loss: {avg_val_loss:.4f}')
 
-#             # Save results to a .txt file
-#             with open('test_1_round_3_training_results.txt', 'w') as f:
-#                 f.write(f'Best Training RMSE Loss: {best_train_loss:.4f} at epoch {best_train_epoch}\n')
-#                 f.write(f'Best Validation RMSE Loss: {best_val_loss:.4f} at epoch {best_val_epoch}\n')
-#                 f.write('\nEpoch-wise losses:\n')
-#                 for epoch, (train_loss, val_loss) in enumerate(zip(train_losses, val_losses), 1):
-#                     f.write(f'Epoch {epoch}: Train RMSE = {train_loss:.4f}, Val RMSE = {val_loss:.4f}\n')
+            # Save results to a .txt file
+            with open('test_1_round_3_training_results.txt', 'w') as f:
+                f.write(f'Best Training RMSE Loss: {best_train_loss:.4f} at epoch {best_train_epoch}\n')
+                f.write(f'Best Validation RMSE Loss: {best_val_loss:.4f} at epoch {best_val_epoch}\n')
+                f.write('\nEpoch-wise losses:\n')
+                for epoch, (train_loss, val_loss) in enumerate(zip(train_losses, val_losses), 1):
+                    f.write(f'Epoch {epoch}: Train RMSE = {train_loss:.4f}, Val RMSE = {val_loss:.4f}\n')
 
-#         return train_losses, val_losses, best_train_loss, best_val_loss, best_train_epoch, best_val_epoch
-
-
-#     train = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/train.pt')
-#     val = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/val.pt')
-#     batch_size = 32
-#     train_loader = DataLoader(train, batch_size, shuffle=True, drop_last=True)
-#     val_loader = DataLoader(val, batch_size=32, shuffle=True, drop_last=True)
-#     model = mLSTM()
-#     model.to('cuda')
-#     loss_fn = torch.nn.MSELoss()
-#     optim = torch.optim.Adam(params=model.parameters(), lr=0.001)
-
-#     start = time.time()
-#     losses = trainer(model, 1000, train_loader, val_loader, loss_fn, optim)
-#     end = time.time()
-
-#     print(f'\nTotal training time on 100 epochs: {end-start}')
+        return train_losses, val_losses, best_train_loss, best_val_loss, best_train_epoch, best_val_epoch
 
 
+    train = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/train.pt')
+    val = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/val.pt')
+    batch_size = 32
+    train_loader = DataLoader(train, batch_size, shuffle=True, drop_last=True)
+    val_loader = DataLoader(val, batch_size=32, shuffle=True, drop_last=True)
+    model = mLSTM()
+    model.to('cuda')
+    loss_fn = torch.nn.MSELoss()
+    optim = torch.optim.Adam(params=model.parameters(), lr=0.001)
 
-# if __name__ == "__main__":
-#     main()
+    start = time.time()
+    losses = trainer(model, 1000, train_loader, val_loader, loss_fn, optim)
+    end = time.time()
+
+    print(f'\nTotal training time on 100 epochs: {end-start}')
+
+
+
+if __name__ == "__main__":
+    main()

@@ -25,12 +25,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
 """
+import time
 import torch
 import numpy as np
 import torch.nn as nn
 from torch import Tensor
 from torch.nn import Parameter
 from torch.autograd import Variable
+from torch.utils.data import DataLoader
 
 class sLSTMCell(nn.Module):
     def __init__(self, input_size, hidden_size, bias=True): 
@@ -39,8 +41,8 @@ class sLSTMCell(nn.Module):
         self.hidden_size = hidden_size
         self.bias = bias
 
-        self.xh = nn.Linear(input_size, hidden_size * 4, bias=bias)
-        self.hh = nn.Linear(hidden_size, hidden_size * 4, bias=bias)
+        self.xh = nn.Linear(input_size, hidden_size * 4, bias=bias).cuda()
+        self.hh = nn.Linear(hidden_size, hidden_size * 4, bias=bias).cuda()
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -48,13 +50,7 @@ class sLSTMCell(nn.Module):
         for w in self.parameters():
             w.data.uniform_(-std, std)
 
-    def forward(self, input, hidden=None):
-
-        #initializes hidden for if the cell is the first layer
-        if hidden is None:
-            hidden = Variable(input.new_zeros(input.size(0), self.hidden_size))
-            hidden = (hidden, hidden, hidden, hidden)
-
+    def forward(self, input, hidden):
         h_t_p, c_t_p, m_t_p, n_t_p = hidden
 
         #computes the combined input to the input projection and the recurrent projection
@@ -81,7 +77,7 @@ class sLSTMCell(nn.Module):
         return h_t, (h_t, c_t, m_t, n_t)
 
     
-class rigid_sLSTM(nn.Module):
+class sLSTM(nn.Module):
 
     def __init__(self, input_size=19, hidden_size=200, num_layers=2, bias=True, output_size=1):
         super(sLSTM, self).__init__()
@@ -136,35 +132,35 @@ class rigid_sLSTM(nn.Module):
 
 
     
-class sLSTM(nn.Module):
+# class sLSTM(nn.Module):
 
-    def __init__(self, input_size=19, hidden_size=200, bias=True):
-        super(sLSTM, self).__init__()
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.bias = bias
+#     def __init__(self, input_size=19, hidden_size=200, bias=True):
+#         super(sLSTM, self).__init__()
+#         self.input_size = input_size
+#         self.hidden_size = hidden_size
+#         self.bias = bias
         
-        self.l = sLSTMCell(hidden_size, hidden_size, bias).to('cuda')
+#         self.l = sLSTMCell(hidden_size, hidden_size, bias).to('cuda')
 
-    def forward(self, input, hidden=None):
-        batch_size = input.size(0)
+#     def forward(self, input, hidden=None):
+#         batch_size = input.size(0)
 
-        h0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
-        c0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
-        m0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
-        n0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+#         h0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+#         c0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+#         m0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
+#         n0 = torch.zeros(1, batch_size, self.hidden_size).requires_grad_().cuda()
 
-        hidden = (h0, c0, m0, n0)        
+#         hidden = (h0, c0, m0, n0)        
 
-        outputs = []
-        for time_step in range(input.size(1)):  
-            x = input[:, time_step, :].cuda()
-            x, hidden = self.l(x, hidden)
+#         outputs = []
+#         for time_step in range(input.size(1)):  
+#             x = input[:, time_step, :].cuda()
+#             x, hidden = self.l(x, hidden)
 
-            outputs.append(x.unsqueeze(1))
+#             outputs.append(x.unsqueeze(1))
 
-        # out = torch.cat(outputs, dim=1)[:, -1, :]  
-        return outputs
+#         # out = torch.cat(outputs, dim=1)[:, -1, :]  
+#         return outputs
     
 
 
@@ -175,5 +171,84 @@ class sLSTM(nn.Module):
 
 
 
+def main():
+    def trainer(model, epochs, train_loader, val_loader, loss_fn, optim):
+        train_losses = []
+        val_losses = []
+        best_train_loss = float('inf')
+        best_val_loss = float('inf')
+        best_train_epoch = 0
+        best_val_epoch = 0
+
+        for epoch in range(1, epochs+1):
+            # Training
+            model.train()
+            num_batches = len(train_loader)
+            total_train_loss = 0
+            for x, y in train_loader:
+                x, y = x.to('cuda'), y.to('cuda')
+                output = model(x)
+                loss = loss_fn(output, y)
+                optim.zero_grad()
+                loss.backward()
+                optim.step()
+                total_train_loss += loss.item()
+            
+            avg_train_loss = np.sqrt(total_train_loss / num_batches)
+            train_losses.append(avg_train_loss)
+            
+            if avg_train_loss < best_train_loss:
+                best_train_loss = avg_train_loss
+                best_train_epoch = epoch
+
+            # Validation
+            model.eval()
+            num_val_batches = len(val_loader)
+            total_val_loss = 0
+            with torch.no_grad():
+                for x, y in val_loader:
+                    x, y = x.to('cuda'), y.to('cuda')
+                    output = model(x)
+                    loss = loss_fn(output, y)
+                    total_val_loss += loss.item()
+            
+            avg_val_loss = np.sqrt(total_val_loss / num_val_batches)
+            val_losses.append(avg_val_loss)
+            
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_val_epoch = epoch
+
+            print(f'Epoch {epoch} Train RMSE Loss: {avg_train_loss:.4f}, Val RMSE Loss: {avg_val_loss:.4f}')
+
+            # Save results to a .txt file
+            with open('test_1_round_3_training_results.txt', 'w') as f:
+                f.write(f'Best Training RMSE Loss: {best_train_loss:.4f} at epoch {best_train_epoch}\n')
+                f.write(f'Best Validation RMSE Loss: {best_val_loss:.4f} at epoch {best_val_epoch}\n')
+                f.write('\nEpoch-wise losses:\n')
+                for epoch, (train_loss, val_loss) in enumerate(zip(train_losses, val_losses), 1):
+                    f.write(f'Epoch {epoch}: Train RMSE = {train_loss:.4f}, Val RMSE = {val_loss:.4f}\n')
+
+        return train_losses, val_losses, best_train_loss, best_val_loss, best_train_epoch, best_val_epoch
 
 
+    train = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/train.pt')
+    val = torch.load('/home/intellect/Documents/Research/Current/ValleyForecast/data/cleaned/val.pt')
+    batch_size = 32
+    train_loader = DataLoader(train, batch_size, shuffle=True, drop_last=True)
+    val_loader = DataLoader(val, batch_size=32, shuffle=True, drop_last=True)
+    model = sLSTM()
+    model.to('cuda')
+    loss_fn = torch.nn.MSELoss()
+    optim = torch.optim.Adam(params=model.parameters(), lr=0.001)
+
+    start = time.time()
+    losses = trainer(model, 1000, train_loader, val_loader, loss_fn, optim)
+    end = time.time()
+
+    print(f'\nTotal training time on 100 epochs: {end-start}')
+
+
+
+if __name__ == "__main__":
+    main()
