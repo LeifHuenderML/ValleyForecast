@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
+from itertools import product
 from mLSTM.mlstm import mLSTMCell
 from sLSTM.slstm import sLSTMCell
 from torch.utils.data import DataLoader
@@ -203,7 +204,7 @@ class Trainer():
                 f.write('\nEpoch-wise losses:\n')
                 for epoch, (train_loss, val_loss) in enumerate(zip(self.train_losses, self.val_losses), 1):
                     f.write(f'Epoch {epoch}: Train RMSE = {train_loss:.4f}, Val RMSE = {val_loss:.4f}\n')
-
+        return self.train_losses, self.val_losses
 
 
 
@@ -244,12 +245,8 @@ Usage Example:
     val_loader = DataLoader(val_dataset, batch_size=32)
     param_dict = {
         'hidden_size': [128, 256],
-        'num_layers': [1, 2],
-        'bias': [True, False],
-        'batch_first': [True],
-        'dropout': [0.0, 0.2],
-        'bidirectional': [True, False],
-        'proj_size': [0, 64]
+        'stack_config': ['ss', 'ms', 'mm', 'sm', 'ssm', 'sms', 'mss',]
+        'dropout': [0.0, 0.1, 0.15, 0.2],
     }
     grid_search = GridSearch(train_loader, val_loader)
     best_train_loss, best_val_loss, best_params = grid_search.search(param_dict)
@@ -282,21 +279,29 @@ class GridSearch():
                 current_train_min = min(train_losses)
                 current_val_min = min(val_losses)
                 best_param_combo = param_combo
-                file = open('search.txt', 'w')
+                file = open('search_val_train.txt', 'w')
                 file.write('Min Train RMSE: ' + str(current_train_min) + '\nMin Validation RMSE: ' + str(current_val_min) + '\n' + str(best_param_combo))
                 file.close()
+            elif (min(train_losses) < current_train_min): 
+                file = open('search_train.txt', 'w')
+                file.write('Min Train RMSE: ' + min(train_losses))
+                file.close()
+            elif (min(val_losses) < current_val_min): 
+                file = open('search_val.txt', 'w')
+                file.write('Min Val RMSE: ' + min(val_losses))
+                file.close()
+        
         
         return current_train_min, current_val_min, best_param_combo
 
-    def evaluate_model(self, hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size):
-        print( hidden_size, num_layers, bias, batch_first, dropout, bidirectional, proj_size)
-        model = LSTM(input_size=19, hidden_size=hidden_size, num_layers=num_layers, bias=bias, batch_first=batch_first, dropout=dropout, bidirectional=bidirectional, proj_size=proj_size)
-        loss_fn = nn.MSELoss()
-        learning_rate = 0.001
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate,)
+    def evaluate_model(self, hidden_size, stack_config, dropout):
+        print( hidden_size, stack_config, dropout)
+        model = xLSTM(input_size=19, hidden_size=hidden_size, stack_config=stack_config, dropout=dropout,)
+        model = model.to('cuda')
+        epochs = 100
 
-        trainer = Trainer(model, self.train_loader, self.val_loader, loss_fn, optimizer=optimizer)
-        _, train_losses, val_losses = trainer.train(epochs=100)
+        trainer = Trainer(model, epochs, self.train_loader, self.val_loader,)
+        train_losses, val_losses = trainer.train()
         return train_losses, val_losses
     
 
