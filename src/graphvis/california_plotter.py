@@ -21,7 +21,7 @@ class California_Plot:
                   '501-1000', '1001-2000', '2001-3000', '3001-4000', '4001-5000', 
                   '5001-40000', '40001-50000']
         
-        self.df['cases_bins'] = pd.cut(self.df[self.color], bins=bins, labels=labels)
+        self.df['  Cases'] = pd.cut(self.df[self.color], bins=bins, labels=labels)
         
         discrete_colors = ['#d8dee9', '#e50000', '#dc0000', '#d40000', '#cc0000', '#c40000', '#bc0000', '#b40000', '#ac0000', '#a40000', '#9c0000', '#940000', '#8b0000', '#830000', '#7b0000', '#730000', '#6b0000', '#630000', '#5b0000', '#530000', '#4b0000', '#430000', '#3b0000']
         color_scale = dict(zip(labels, discrete_colors))
@@ -30,7 +30,7 @@ class California_Plot:
             self.df,
             geojson=self.counties,
             locations=self.locations,
-            color='cases_bins',
+            color='  Cases',
             color_discrete_map=color_scale,
             featureidkey="properties.NAME",
             projection='mercator',
@@ -40,7 +40,7 @@ class California_Plot:
         self.fig.update_geos(
             fitbounds="locations",
             visible=False,
-            bgcolor='#d8dee9',
+            # bgcolor='#d8dee9',
             projection_scale=7,
             center={"lat": 37.5, "lon": -119.5},
             lataxis_range=[32.5, 42.0],
@@ -49,11 +49,23 @@ class California_Plot:
 
         self.fig.update_layout(
             title_text=self.title,
-            showlegend=False,
-            paper_bgcolor='#d8dee9',
-            plot_bgcolor='#d8dee9',
+            # showlegend=False,
+            # paper_bgcolor='#d8dee9',
+            # plot_bgcolor='#d8dee9',
             title_x=0.5
         )
+
+        self.fig.update_layout(legend=dict(
+            y=0.99,
+            x=0.70
+        ))
+
+        self.fig.update_layout(
+            height=800,
+            width=800,
+        )
+
+
 
         self.fig.show()
 

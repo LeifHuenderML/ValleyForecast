@@ -1,0 +1,3 @@
+Min Train RMSE: 230.25718493805914
+Min Validation RMSE: 80.82174622640825
+{'hidden_size': 64, 'stack_config': 'ss', 'dropout': 0.0}
