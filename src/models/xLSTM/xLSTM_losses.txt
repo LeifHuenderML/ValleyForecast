@@ -1,48 +1,13 @@
-Best Training RMSE Loss: 252.4889 at epoch 43
-Best Validation RMSE Loss: 87.2505 at epoch 42
+Best Training RMSE Loss: 279.2101 at epoch 9
+Best Validation RMSE Loss: 130.9466 at epoch 5
 
 Epoch-wise losses:
-Epoch 1: Train RMSE = 296.3463, Val RMSE = 136.1025
-Epoch 2: Train RMSE = 289.5424, Val RMSE = 137.3337
-Epoch 3: Train RMSE = 289.0559, Val RMSE = 132.9794
-Epoch 4: Train RMSE = 288.7778, Val RMSE = 136.4883
-Epoch 5: Train RMSE = 288.3042, Val RMSE = 135.5235
-Epoch 6: Train RMSE = 288.1788, Val RMSE = 137.3432
-Epoch 7: Train RMSE = 287.8783, Val RMSE = 131.9685
-Epoch 8: Train RMSE = 287.5020, Val RMSE = 135.1625
-Epoch 9: Train RMSE = 286.8174, Val RMSE = 136.8057
-Epoch 10: Train RMSE = 286.4941, Val RMSE = 137.1079
-Epoch 11: Train RMSE = 286.1278, Val RMSE = 129.6972
-Epoch 12: Train RMSE = 285.7758, Val RMSE = 134.4327
-Epoch 13: Train RMSE = 285.3609, Val RMSE = 136.5074
-Epoch 14: Train RMSE = 284.9297, Val RMSE = 139.9533
-Epoch 15: Train RMSE = 284.2766, Val RMSE = 99.5352
-Epoch 16: Train RMSE = 283.9676, Val RMSE = 133.2888
-Epoch 17: Train RMSE = 283.3264, Val RMSE = 135.9463
-Epoch 18: Train RMSE = 283.1194, Val RMSE = 96.5441
-Epoch 19: Train RMSE = 283.4523, Val RMSE = 140.0314
-Epoch 20: Train RMSE = 282.1278, Val RMSE = 136.2459
-Epoch 21: Train RMSE = 281.6275, Val RMSE = 138.7917
-Epoch 22: Train RMSE = 281.7325, Val RMSE = 138.2769
-Epoch 23: Train RMSE = 280.9939, Val RMSE = 102.7552
-Epoch 24: Train RMSE = 280.5012, Val RMSE = 135.8737
-Epoch 25: Train RMSE = 280.3876, Val RMSE = 135.4347
-Epoch 26: Train RMSE = 279.5921, Val RMSE = 94.8389
-Epoch 27: Train RMSE = 278.8676, Val RMSE = 137.2903
-Epoch 28: Train RMSE = 277.8159, Val RMSE = 99.1122
-Epoch 29: Train RMSE = 277.4830, Val RMSE = 131.7319
-Epoch 30: Train RMSE = 276.3029, Val RMSE = 136.8489
-Epoch 31: Train RMSE = 275.2842, Val RMSE = 126.9890
-Epoch 32: Train RMSE = 274.3195, Val RMSE = 102.2910
-Epoch 33: Train RMSE = 272.9285, Val RMSE = 129.3948
-Epoch 34: Train RMSE = 271.4227, Val RMSE = 124.2556
-Epoch 35: Train RMSE = 270.4792, Val RMSE = 134.3285
-Epoch 36: Train RMSE = 268.1156, Val RMSE = 133.0116
-Epoch 37: Train RMSE = 267.3117, Val RMSE = 132.5263
-Epoch 38: Train RMSE = 263.5914, Val RMSE = 103.3397
-Epoch 39: Train RMSE = 262.2348, Val RMSE = 132.3339
-Epoch 40: Train RMSE = 260.9083, Val RMSE = 128.9320
-Epoch 41: Train RMSE = 258.1085, Val RMSE = 131.8983
-Epoch 42: Train RMSE = 256.2457, Val RMSE = 87.2505
-Epoch 43: Train RMSE = 252.4889, Val RMSE = 126.9152
-Epoch 44: Train RMSE = 252.5687, Val RMSE = 127.0679
+Epoch 1: Train RMSE = 290.2240, Val RMSE = 137.1431
+Epoch 2: Train RMSE = 284.4326, Val RMSE = 134.4217
+Epoch 3: Train RMSE = 284.3577, Val RMSE = 137.6438
+Epoch 4: Train RMSE = 283.6008, Val RMSE = 139.1155
+Epoch 5: Train RMSE = 282.9189, Val RMSE = 130.9466
+Epoch 6: Train RMSE = 282.1109, Val RMSE = 135.0268
+Epoch 7: Train RMSE = 280.9584, Val RMSE = 135.0717
+Epoch 8: Train RMSE = 279.9269, Val RMSE = 137.0392
+Epoch 9: Train RMSE = 279.2101, Val RMSE = 140.5741

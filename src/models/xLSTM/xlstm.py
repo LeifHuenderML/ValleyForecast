@@ -36,14 +36,14 @@ class xLSTM(nn.Module):
                     input_size = self.input_size
                 else:
                     input_size = self.hidden_size
-                lstm_layer = mLSTMCell(input_size, self.hidden_size)
+                lstm_layer = mLSTMCell(input_size, self.hidden_size).to('cuda')
             elif layer == 's':
                 if len(lstms) == 0:
                     input_size = self.input_size
                 else:
                     input_size = self.hidden_size
                     
-                lstm_layer = sLSTMCell(input_size, self.hidden_size)
+                lstm_layer = sLSTMCell(input_size, self.hidden_size).to('cuda')
             else:
                 raise ValueError(f'{layer} is not a valid stack config character')
 
@@ -273,8 +273,6 @@ class GridSearch():
         for combo in product(*values):
             param_combo = dict(zip(keys, combo))
             train_losses, val_losses = self.evaluate_model(**param_combo)
-            self.train_loss_df = pd.concat([self.train_loss_df, pd.Series(train_losses)])
-            self.val_loss_df = pd.concat([self.val_loss_df, pd.Series(val_losses)])
             if (min(train_losses) < current_train_min) and (min(val_losses) < current_val_min): 
                 current_train_min = min(train_losses)
                 current_val_min = min(val_losses)
@@ -282,14 +280,7 @@ class GridSearch():
                 file = open('search_val_train.txt', 'w')
                 file.write('Min Train RMSE: ' + str(current_train_min) + '\nMin Validation RMSE: ' + str(current_val_min) + '\n' + str(best_param_combo))
                 file.close()
-            elif (min(train_losses) < current_train_min): 
-                file = open('search_train.txt', 'w')
-                file.write('Min Train RMSE: ' + min(train_losses))
-                file.close()
-            elif (min(val_losses) < current_val_min): 
-                file = open('search_val.txt', 'w')
-                file.write('Min Val RMSE: ' + min(val_losses))
-                file.close()
+
         
         
         return current_train_min, current_val_min, best_param_combo
@@ -298,7 +289,7 @@ class GridSearch():
         print( hidden_size, stack_config, dropout)
         model = xLSTM(input_size=19, hidden_size=hidden_size, stack_config=stack_config, dropout=dropout,)
         model = model.to('cuda')
-        epochs = 100
+        epochs = 10
 
         trainer = Trainer(model, epochs, self.train_loader, self.val_loader,)
         train_losses, val_losses = trainer.train()

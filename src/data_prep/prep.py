@@ -149,7 +149,7 @@ train_y = y_tensor[train_indices]
 num_augmentations = 20
 
 noise_lvls = np.logspace(np.log10(0.01), np.log10(0.00001), num=num_augmentations)
-print(f'Noise Levels: {noise_lvls}')
+
 noise = [torch.randn_like(train_x) * noise_lvl for noise_lvl in noise_lvls]
 augmented_x = torch.cat([train_x] + [train_x + noise[i] for i in range(num_augmentations)])
 augmented_y = train_y.repeat(num_augmentations + 1)
